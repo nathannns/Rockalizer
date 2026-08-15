@@ -45,6 +45,11 @@ public:
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
+    juce::StringArray getPresetNames() const;
+    bool loadPreset (int presetIndex);
+    bool saveUserPreset (const juce::String& presetName);
+    int getCurrentPresetIndex() const noexcept { return currentPresetIndex; }
+
 private:
     juce::dsp::Gain<float> inputGain;
     juce::dsp::Gain<float> outputGain;
@@ -57,6 +62,10 @@ private:
     juce::AudioBuffer<float> globalDryBuffer;
     juce::SmoothedValue<float> globalWet;
     double currentSampleRate = 44100.0;
+    int currentPresetIndex = 0;
+
+    juce::File getUserPresetDirectory() const;
+    void loadFactoryPreset (int presetIndex);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RockalizerAudioProcessor)
 };

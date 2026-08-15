@@ -16,6 +16,44 @@ const juce::Colour accent { 0xffff7a33 };
 RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
+    presetBox.setEditableText (true);
+    presetBox.setJustificationType (juce::Justification::centred);
+    presetBox.setColour (juce::ComboBox::backgroundColourId, panel);
+    presetBox.setColour (juce::ComboBox::textColourId, primaryText);
+    presetBox.setColour (juce::ComboBox::outlineColourId, panelBorder);
+    addAndMakeVisible (presetBox);
+
+    for (auto* button : { &presetPreviousButton, &presetNextButton, &presetSaveButton })
+    {
+        button->setColour (juce::TextButton::buttonColourId, panel);
+        button->setColour (juce::TextButton::textColourOffId, primaryText);
+        addAndMakeVisible (*button);
+    }
+
+    presetBox.onChange = [this]
+    {
+        if (presetBox.getSelectedItemIndex() >= 0)
+            processor.loadPreset (presetBox.getSelectedItemIndex());
+    };
+    presetPreviousButton.onClick = [this]
+    {
+        const auto count = processor.getPresetNames().size();
+        const auto next = (processor.getCurrentPresetIndex() - 1 + count) % count;
+        if (processor.loadPreset (next)) presetBox.setSelectedItemIndex (next, juce::dontSendNotification);
+    };
+    presetNextButton.onClick = [this]
+    {
+        const auto count = processor.getPresetNames().size();
+        const auto next = (processor.getCurrentPresetIndex() + 1) % count;
+        if (processor.loadPreset (next)) presetBox.setSelectedItemIndex (next, juce::dontSendNotification);
+    };
+    presetSaveButton.onClick = [this]
+    {
+        auto name = presetBox.getText().trim();
+        if (name.isEmpty()) name = "User Preset";
+        if (processor.saveUserPreset (name)) refreshPresetList();
+    };
+
     powerButton.setClickingTogglesState (true);
     powerButton.setColour (juce::TextButton::buttonColourId, panel);
     powerButton.setColour (juce::TextButton::buttonOnColourId, accent);
@@ -149,7 +187,17 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     setResizeLimits (900, 500, 1800, 990);
     getConstrainer()->setFixedAspectRatio (static_cast<double> (referenceWidth) / referenceHeight);
     setSize (referenceWidth, referenceHeight);
+    refreshPresetList();
     startTimerHz (30);
+}
+
+void RockalizerAudioProcessorEditor::refreshPresetList()
+{
+    const auto names = processor.getPresetNames();
+    presetBox.clear (juce::dontSendNotification);
+    presetBox.addItemList (names, 1);
+    presetBox.setSelectedItemIndex (juce::jlimit (0, names.size() - 1, processor.getCurrentPresetIndex()),
+                                    juce::dontSendNotification);
 }
 
 void RockalizerAudioProcessorEditor::timerCallback()
@@ -215,10 +263,6 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
     g.fillRoundedRectangle (preset, 8.0f);
     g.setColour (panelBorder);
     g.drawRoundedRectangle (preset, 8.0f, 1.0f);
-    g.setColour (primaryText);
-    g.setFont (juce::FontOptions (16.0f, juce::Font::bold));
-    g.drawText ("<       DEFAULT       >", preset, juce::Justification::centred);
-
     const juce::StringArray moduleNames { "TAPE", "CHORUS", "ECHO", "SPRING" };
     const auto gap = 14.0f;
     const auto left = 28.0f;
@@ -308,6 +352,14 @@ void RockalizerAudioProcessorEditor::resized()
     place (outputSlider, 1048, 570);
     powerButton.setBounds (juce::roundToInt (1092 * scaleX), juce::roundToInt (24 * scaleY),
                            juce::roundToInt (80 * scaleX), juce::roundToInt (44 * scaleY));
+    presetPreviousButton.setBounds (juce::roundToInt (320 * scaleX), juce::roundToInt (28 * scaleY),
+                                    juce::roundToInt (38 * scaleX), juce::roundToInt (36 * scaleY));
+    presetBox.setBounds (juce::roundToInt (366 * scaleX), juce::roundToInt (28 * scaleY),
+                         juce::roundToInt (338 * scaleX), juce::roundToInt (36 * scaleY));
+    presetNextButton.setBounds (juce::roundToInt (712 * scaleX), juce::roundToInt (28 * scaleY),
+                                juce::roundToInt (38 * scaleX), juce::roundToInt (36 * scaleY));
+    presetSaveButton.setBounds (juce::roundToInt (758 * scaleX), juce::roundToInt (28 * scaleY),
+                                juce::roundToInt (98 * scaleX), juce::roundToInt (36 * scaleY));
 
     const auto chorusCardX = 318;
     const auto placeChorus = [scaleX, scaleY] (juce::Slider& slider,

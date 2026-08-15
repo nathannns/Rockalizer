@@ -57,6 +57,10 @@ private:
     juce::ComboBox springTypeBox;
     juce::ToggleButton springOnButton { "ON" };
     juce::TextButton powerButton { "POWER" };
+    juce::TextButton presetPreviousButton { "<" };
+    juce::TextButton presetNextButton { ">" };
+    juce::TextButton presetSaveButton { "SAVE" };
+    juce::ComboBox presetBox;
     float displayInputDb = -100.0f;
     float displayOutputDb = -100.0f;
     bool inputClipped = false;
@@ -84,6 +88,8 @@ private:
     std::unique_ptr<SliderAttachment> springDripAttachment, springMixAttachment;
     std::unique_ptr<ComboBoxAttachment> springTypeAttachment;
     std::unique_ptr<ButtonAttachment> springOnAttachment;
+
+    void refreshPresetList();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RockalizerAudioProcessorEditor)
 };

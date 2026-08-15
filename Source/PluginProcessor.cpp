@@ -9,6 +9,127 @@ RockalizerAudioProcessor::RockalizerAudioProcessor()
 {
 }
 
+juce::File RockalizerAudioProcessor::getUserPresetDirectory() const
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+        .getChildFile ("Rockalizer").getChildFile ("Presets");
+}
+
+juce::StringArray RockalizerAudioProcessor::getPresetNames() const
+{
+    juce::StringArray names { "Clean Studio", "Warm Cassette", "Wide Indie", "Space Echo",
+                              "Vintage Spring", "Lo-Fi Dream", "Vocal Ambience", "Guitar Room" };
+    juce::Array<juce::File> files;
+    getUserPresetDirectory().findChildFiles (files, juce::File::findFiles, false, "*.xml");
+    juce::StringArray userNames;
+    for (const auto& file : files)
+        userNames.add (file.getFileNameWithoutExtension());
+    userNames.sort (true);
+    names.addArray (userNames);
+    return names;
+}
+
+void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
+{
+    for (auto* parameter : getParameters())
+        parameter->setValueNotifyingHost (parameter->getDefaultValue());
+
+    const auto set = [this] (const char* parameterID, float plainValue)
+    {
+        if (auto* parameter = parameters.getParameter (parameterID))
+            parameter->setValueNotifyingHost (parameter->convertTo0to1 (plainValue));
+    };
+
+    switch (presetIndex)
+    {
+        case 0: // Clean Studio
+            set ("tapeType", 0.0f); set ("tapeDrive", 18.0f); set ("tapeComp", 20.0f);
+            set ("tapeMix", 35.0f); set ("chorusMix", 10.0f); set ("echoMix", 8.0f);
+            set ("springMix", 10.0f); break;
+        case 1: // Warm Cassette
+            set ("tapeType", 1.0f); set ("tapeDrive", 48.0f); set ("tapeComp", 55.0f);
+            set ("tapeTone", 42.0f); set ("tapeAge", 45.0f); set ("tapeMix", 62.0f);
+            set ("chorusMix", 12.0f); set ("echoMix", 10.0f); set ("springMix", 8.0f); break;
+        case 2: // Wide Indie
+            set ("tapeDrive", 24.0f); set ("tapeMix", 38.0f); set ("chorusRate", 0.45f);
+            set ("chorusDepth", 46.0f); set ("chorusWidth", 88.0f); set ("chorusMix", 36.0f);
+            set ("echoTime", 420.0f); set ("echoRepeats", 22.0f); set ("echoMix", 16.0f);
+            set ("springType", 1.0f); set ("springMix", 18.0f); break;
+        case 3: // Space Echo
+            set ("tapeDrive", 32.0f); set ("echoPattern", 3.0f); set ("echoTime", 465.0f);
+            set ("echoRepeats", 58.0f); set ("echoTone", 4800.0f); set ("echoWobble", 42.0f);
+            set ("echoDrive", 38.0f); set ("echoMix", 38.0f); set ("springType", 2.0f);
+            set ("springDecay", 48.0f); set ("springMix", 22.0f); break;
+        case 4: // Vintage Spring
+            set ("tapeType", 1.0f); set ("tapeDrive", 30.0f); set ("tapeMix", 42.0f);
+            set ("chorusMix", 8.0f); set ("echoMix", 12.0f); set ("springType", 1.0f);
+            set ("springDecay", 55.0f); set ("springDwell", 52.0f); set ("springTone", 58.0f);
+            set ("springDrip", 62.0f); set ("springMix", 42.0f); break;
+        case 5: // Lo-Fi Dream
+            set ("tapeType", 1.0f); set ("tapeDrive", 58.0f); set ("tapeComp", 62.0f);
+            set ("tapeTone", 32.0f); set ("tapeAge", 72.0f); set ("tapeMix", 70.0f);
+            set ("chorusRate", 0.28f); set ("chorusDepth", 58.0f); set ("chorusMix", 34.0f);
+            set ("echoPattern", 4.0f); set ("echoTime", 560.0f); set ("echoRepeats", 42.0f);
+            set ("echoTone", 3300.0f); set ("echoMix", 28.0f); set ("highCut", 9800.0f);
+            set ("springType", 4.0f); set ("springMix", 24.0f); break;
+        case 6: // Vocal Ambience
+            set ("tapeDrive", 16.0f); set ("tapeComp", 28.0f); set ("tapeMix", 28.0f);
+            set ("chorusDepth", 18.0f); set ("chorusWidth", 72.0f); set ("chorusMix", 12.0f);
+            set ("echoPattern", 1.0f); set ("echoTime", 310.0f); set ("echoRepeats", 18.0f);
+            set ("echoMix", 14.0f); set ("springType", 0.0f); set ("springDecay", 34.0f);
+            set ("springMix", 16.0f); set ("lowCut", 75.0f); break;
+        case 7: // Guitar Room
+            set ("tapeDrive", 28.0f); set ("tapeComp", 34.0f); set ("tapeMix", 44.0f);
+            set ("chorusMix", 6.0f); set ("echoTime", 125.0f); set ("echoRepeats", 12.0f);
+            set ("echoMix", 9.0f); set ("springType", 5.0f); set ("springDecay", 25.0f);
+            set ("springDwell", 35.0f); set ("springMix", 22.0f); set ("lowCut", 45.0f); break;
+        default: break;
+    }
+}
+
+bool RockalizerAudioProcessor::loadPreset (int presetIndex)
+{
+    const auto names = getPresetNames();
+    if (! juce::isPositiveAndBelow (presetIndex, names.size()))
+        return false;
+
+    if (presetIndex < 8)
+        loadFactoryPreset (presetIndex);
+    else
+    {
+        const auto file = getUserPresetDirectory().getChildFile (
+            juce::File::createLegalFileName (names[presetIndex]) + ".xml");
+        if (auto xml = juce::XmlDocument::parse (file))
+        {
+            if (! xml->hasTagName (parameters.state.getType()))
+                return false;
+            parameters.replaceState (juce::ValueTree::fromXml (*xml));
+        }
+        else
+            return false;
+    }
+
+    currentPresetIndex = presetIndex;
+    return true;
+}
+
+bool RockalizerAudioProcessor::saveUserPreset (const juce::String& presetName)
+{
+    const auto legalName = juce::File::createLegalFileName (presetName.trim());
+    if (legalName.isEmpty() || getUserPresetDirectory().createDirectory().failed())
+        return false;
+
+    const auto file = getUserPresetDirectory().getChildFile (legalName + ".xml");
+    if (auto xml = parameters.copyState().createXml())
+    {
+        const auto success = file.replaceWithText (xml->toString());
+        if (success)
+            currentPresetIndex = getPresetNames().indexOf (legalName);
+        return success;
+    }
+    return false;
+}
+
 juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;

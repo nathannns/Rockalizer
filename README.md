@@ -19,6 +19,10 @@ Checkpoint v0.6 embeds seven supplied spring IRs and adds Spring Type, Decay,
 Dwell, Tone, Drip, Mix and smooth bypass.
 Checkpoint v0.7 adds a click-free global power/bypass control, live input and
 output peak meters, clip indication, and a preserved dry path around the chain.
+Checkpoint v0.7.1 makes the header POWER control explicitly host-automatable
+and guarantees that it remains the topmost clickable UI component.
+Checkpoint v0.8 adds eight complete factory presets, previous/next navigation,
+an editable preset-name field, and persistent user preset saving/loading.
 
 ## macOS build
 
