@@ -28,8 +28,8 @@ set_property(GLOBAL PROPERTY _CMAKE_FindGit_GIT_EXECUTABLE_VERSION
 include(ExternalProject)
 ExternalProject_Add(juce-populate
                      "UPDATE_DISCONNECTED" "False" "GIT_REPOSITORY" "https://github.com/juce-framework/JUCE.git" "EXTERNALPROJECT_INTERNAL_ARGUMENT_SEPARATOR" "GIT_TAG" "8.0.15" "GIT_SHALLOW" "TRUE"
-                    SOURCE_DIR          "/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-src"
-                    BINARY_DIR          "/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-build"
+                    SOURCE_DIR          "/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-src"
+                    BINARY_DIR          "/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-build"
                     CONFIGURE_COMMAND   ""
                     BUILD_COMMAND       ""
                     INSTALL_COMMAND     ""

@@ -3,9 +3,9 @@
 # No other meaning or use of this file is supported.
 
 method=git
-command=/opt/homebrew/bin/cmake;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-subbuild/juce-populate-prefix/tmp/juce-populate-gitclone.cmake
-source_dir=/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-src
-work_dir=/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps
+command=/opt/homebrew/bin/cmake;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/tmp/juce-populate-gitclone.cmake
+source_dir=/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-src
+work_dir=/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps
 repository=https://github.com/juce-framework/JUCE.git
 remote=origin
 init_submodules=TRUE

@@ -144,7 +144,7 @@ rule CUSTOM_COMMAND
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = /opt/homebrew/bin/cmake --regenerate-during-build -S/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33 -B/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release
+  command = /opt/homebrew/bin/cmake --regenerate-during-build -S/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub -B/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release
   description = Re-running CMake...
   generator = 1
 
@@ -153,7 +153,7 @@ rule RERUN_CMAKE
 # Rule for re-checking globbed directories.
 
 rule VERIFY_GLOBS
-  command = /opt/homebrew/bin/cmake -P /Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/CMakeFiles/VerifyGlobs.cmake
+  command = /opt/homebrew/bin/cmake -P /Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/CMakeFiles/VerifyGlobs.cmake
   description = Re-checking globbed directories...
   generator = 1
 

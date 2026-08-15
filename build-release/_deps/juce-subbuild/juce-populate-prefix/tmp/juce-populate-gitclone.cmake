@@ -3,11 +3,11 @@
 
 cmake_minimum_required(VERSION ${CMAKE_VERSION}) # this file comes with cmake
 
-if(EXISTS "/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitclone-lastrun.txt" AND EXISTS "/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitinfo.txt" AND
-  "/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitclone-lastrun.txt" IS_NEWER_THAN "/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitinfo.txt")
+if(EXISTS "/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitclone-lastrun.txt" AND EXISTS "/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitinfo.txt" AND
+  "/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitclone-lastrun.txt" IS_NEWER_THAN "/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitinfo.txt")
   message(VERBOSE
     "Avoiding repeated git clone, stamp file is up to date: "
-    "'/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitclone-lastrun.txt'"
+    "'/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitclone-lastrun.txt'"
   )
   return()
 endif()
@@ -22,12 +22,12 @@ else()
 endif()
 
 execute_process(
-  COMMAND ${CMAKE_COMMAND} -E rm -rf "/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-src"
+  COMMAND ${CMAKE_COMMAND} -E rm -rf "/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-src"
   RESULT_VARIABLE error_code
   ${maybe_show_command}
 )
 if(error_code)
-  message(FATAL_ERROR "Failed to remove directory: '/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-src'")
+  message(FATAL_ERROR "Failed to remove directory: '/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-src'")
 endif()
 
 # try the clone 1 + N times in case there is an odd git clone issue
@@ -42,7 +42,7 @@ while(error_code AND number_of_tries LESS ${max_tries})
   execute_process(
     COMMAND "/opt/homebrew/bin/git"
             clone --no-checkout --depth 1 --no-single-branch --config "advice.detachedHead=false" "https://github.com/juce-framework/JUCE.git" "juce-src"
-    WORKING_DIRECTORY "/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps"
+    WORKING_DIRECTORY "/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps"
     RESULT_VARIABLE error_code
     ${maybe_show_command}
   )
@@ -58,7 +58,7 @@ endif()
 execute_process(
   COMMAND "/opt/homebrew/bin/git"
           checkout "8.0.15" --
-  WORKING_DIRECTORY "/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-src"
+  WORKING_DIRECTORY "/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-src"
   RESULT_VARIABLE error_code
   ${maybe_show_command}
 )
@@ -71,22 +71,22 @@ if(init_submodules)
   execute_process(
     COMMAND "/opt/homebrew/bin/git" 
             submodule update --recursive --init 
-    WORKING_DIRECTORY "/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-src"
+    WORKING_DIRECTORY "/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-src"
     RESULT_VARIABLE error_code
     ${maybe_show_command}
   )
 endif()
 if(error_code)
-  message(FATAL_ERROR "Failed to update submodules in: '/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-src'")
+  message(FATAL_ERROR "Failed to update submodules in: '/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-src'")
 endif()
 
 # Complete success, update the script-last-run stamp file:
 #
 execute_process(
-  COMMAND ${CMAKE_COMMAND} -E copy "/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitinfo.txt" "/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitclone-lastrun.txt"
+  COMMAND ${CMAKE_COMMAND} -E copy "/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitinfo.txt" "/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitclone-lastrun.txt"
   RESULT_VARIABLE error_code
   ${maybe_show_command}
 )
 if(error_code)
-  message(FATAL_ERROR "Failed to copy script-last-run stamp file: '/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitclone-lastrun.txt'")
+  message(FATAL_ERROR "Failed to copy script-last-run stamp file: '/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-gitclone-lastrun.txt'")
 endif()

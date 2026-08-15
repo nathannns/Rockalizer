@@ -42,7 +42,7 @@ rule CUSTOM_COMMAND
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = /opt/homebrew/bin/cmake --regenerate-during-build -S/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-src/extras/Build/CMake/juce_vst3_helper -B/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/vst3_helpers/Rockalizer
+  command = /opt/homebrew/bin/cmake --regenerate-during-build -S/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-src/extras/Build/CMake/juce_vst3_helper -B/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/vst3_helpers/Rockalizer
   description = Re-running CMake...
   generator = 1
 
