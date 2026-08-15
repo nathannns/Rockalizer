@@ -79,6 +79,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::cr
         juce::NormalisableRange<float> { 1200.0f, 14000.0f, 1.0f, 0.35f }, 6500.0f,
         juce::AudioParameterFloatAttributes().withLabel ("Hz")));
 
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "tapeOn", 1 }, "Tape On", true));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "tapeType", 1 }, "Tape Type",
+        juce::StringArray { "Studio", "Cassette" }, 0));
+    for (auto item : { std::pair { "tapeDrive", "Tape Drive" }, std::pair { "tapeComp", "Tape Compression" },
+                       std::pair { "tapeTone", "Tape Tone" }, std::pair { "tapeAge", "Tape Age" },
+                       std::pair { "tapeMix", "Tape Mix" } })
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { item.first, 1 }, item.second,
+            juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, juce::String (item.first) == "tapeTone" ? 60.0f : 25.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("%")));
+
     return layout;
 }
 
@@ -97,6 +107,7 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     highCutFilter.prepare (spec);
     chorusModule.prepare (spec);
     echoModule.prepare (spec);
+    tapeModule.prepare (spec);
 
     inputGain.setRampDurationSeconds (0.02);
     outputGain.setRampDurationSeconds (0.02);
@@ -109,6 +120,7 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     highCutFilter.reset();
     chorusModule.reset();
     echoModule.reset();
+    tapeModule.reset();
 }
 
 void RockalizerAudioProcessor::releaseResources()
@@ -149,6 +161,13 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     inputGain.process (context);
     lowCutFilter.process (context);
+
+    tapeModule.setParameters (parameters.getRawParameterValue ("tapeDrive")->load(),
+        parameters.getRawParameterValue ("tapeComp")->load(), parameters.getRawParameterValue ("tapeTone")->load(),
+        parameters.getRawParameterValue ("tapeAge")->load(), parameters.getRawParameterValue ("tapeMix")->load(),
+        parameters.getRawParameterValue ("tapeOn")->load() > 0.5f,
+        static_cast<int> (parameters.getRawParameterValue ("tapeType")->load()));
+    tapeModule.process (buffer);
 
     chorusModule.setParameters (
         parameters.getRawParameterValue ("chorusRate")->load(),

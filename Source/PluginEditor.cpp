@@ -82,6 +82,27 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     echoOnAttachment = std::make_unique<ButtonAttachment> (processor.parameters, "echoOn", echoOnButton);
     echoSyncAttachment = std::make_unique<ButtonAttachment> (processor.parameters, "echoSync", echoSyncButton);
 
+    configureKnob (tapeDriveSlider, tapeDriveLabel, "DRIVE", " %");
+    configureKnob (tapeCompSlider, tapeCompLabel, "COMP", " %");
+    configureKnob (tapeToneSlider, tapeToneLabel, "TONE", " %");
+    configureKnob (tapeAgeSlider, tapeAgeLabel, "AGE", " %");
+    configureKnob (tapeMixSlider, tapeMixLabel, "MIX", " %");
+    tapeDriveAttachment = std::make_unique<SliderAttachment> (processor.parameters, "tapeDrive", tapeDriveSlider);
+    tapeCompAttachment = std::make_unique<SliderAttachment> (processor.parameters, "tapeComp", tapeCompSlider);
+    tapeToneAttachment = std::make_unique<SliderAttachment> (processor.parameters, "tapeTone", tapeToneSlider);
+    tapeAgeAttachment = std::make_unique<SliderAttachment> (processor.parameters, "tapeAge", tapeAgeSlider);
+    tapeMixAttachment = std::make_unique<SliderAttachment> (processor.parameters, "tapeMix", tapeMixSlider);
+    tapeTypeBox.addItemList ({ "STUDIO", "CASSETTE" }, 1);
+    tapeTypeBox.setColour (juce::ComboBox::backgroundColourId, panel);
+    tapeTypeBox.setColour (juce::ComboBox::textColourId, primaryText);
+    tapeTypeBox.setColour (juce::ComboBox::outlineColourId, panelBorder);
+    addAndMakeVisible (tapeTypeBox);
+    tapeTypeAttachment = std::make_unique<ComboBoxAttachment> (processor.parameters, "tapeType", tapeTypeBox);
+    tapeOnButton.setColour (juce::ToggleButton::textColourId, primaryText);
+    tapeOnButton.setColour (juce::ToggleButton::tickColourId, accent);
+    addAndMakeVisible (tapeOnButton);
+    tapeOnAttachment = std::make_unique<ButtonAttachment> (processor.parameters, "tapeOn", tapeOnButton);
+
     setResizable (true, true);
     setResizeLimits (900, 500, 1800, 990);
     getConstrainer()->setFixedAspectRatio (static_cast<double> (referenceWidth) / referenceHeight);
@@ -175,7 +196,7 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
                               card.getX() + 14.0f,
                               card.getRight() - 14.0f);
 
-        if (moduleNames[index] != "CHORUS" && moduleNames[index] != "ECHO")
+        if (moduleNames[index] != "TAPE" && moduleNames[index] != "CHORUS" && moduleNames[index] != "ECHO")
         {
             g.setColour (secondaryText);
             g.setFont (juce::FontOptions (14.0f));
@@ -269,5 +290,24 @@ void RockalizerAudioProcessorEditor::resized()
     placeEcho (echoDriveSlider, echoDriveLabel, echoCardX + 50, 402, 82);
     placeEcho (echoMixSlider, echoMixLabel, echoCardX + 148, 402, 92);
     echoOnButton.setBounds (juce::roundToInt ((echoCardX + 208) * scaleX), juce::roundToInt (111 * scaleY),
+                            juce::roundToInt (58 * scaleX), juce::roundToInt (26 * scaleY));
+
+    const auto tapeCardX = 28;
+    tapeTypeBox.setBounds (juce::roundToInt ((tapeCardX + 72) * scaleX), juce::roundToInt (145 * scaleY),
+                           juce::roundToInt (132 * scaleX), juce::roundToInt (28 * scaleY));
+    const auto placeTape = [scaleX, scaleY] (juce::Slider& slider, juce::Label& label,
+                                             int x, int y, int size = 90)
+    {
+        label.setBounds (juce::roundToInt (x * scaleX), juce::roundToInt (y * scaleY),
+                         juce::roundToInt (size * scaleX), juce::roundToInt (18 * scaleY));
+        slider.setBounds (juce::roundToInt (x * scaleX), juce::roundToInt ((y + 18) * scaleY),
+                          juce::roundToInt (size * scaleX), juce::roundToInt (80 * scaleY));
+    };
+    placeTape (tapeDriveSlider, tapeDriveLabel, tapeCardX + 24, 188);
+    placeTape (tapeCompSlider, tapeCompLabel, tapeCardX + 158, 188);
+    placeTape (tapeToneSlider, tapeToneLabel, tapeCardX + 24, 310);
+    placeTape (tapeAgeSlider, tapeAgeLabel, tapeCardX + 158, 310);
+    placeTape (tapeMixSlider, tapeMixLabel, tapeCardX + 91, 418, 100);
+    tapeOnButton.setBounds (juce::roundToInt ((tapeCardX + 208) * scaleX), juce::roundToInt (111 * scaleY),
                             juce::roundToInt (58 * scaleX), juce::roundToInt (26 * scaleY));
 }

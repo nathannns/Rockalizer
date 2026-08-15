@@ -46,6 +46,10 @@ private:
     juce::Label echoWobbleLabel, echoDriveLabel, echoMixLabel;
     juce::ComboBox echoPatternBox, echoDivisionBox;
     juce::ToggleButton echoOnButton { "ON" }, echoSyncButton { "SYNC" };
+    juce::Slider tapeDriveSlider, tapeCompSlider, tapeToneSlider, tapeAgeSlider, tapeMixSlider;
+    juce::Label tapeDriveLabel, tapeCompLabel, tapeToneLabel, tapeAgeLabel, tapeMixLabel;
+    juce::ComboBox tapeTypeBox;
+    juce::ToggleButton tapeOnButton { "ON" };
 
     std::unique_ptr<SliderAttachment> inputAttachment;
     std::unique_ptr<SliderAttachment> lowCutAttachment;
@@ -61,6 +65,10 @@ private:
     std::unique_ptr<SliderAttachment> echoWobbleAttachment, echoDriveAttachment, echoMixAttachment;
     std::unique_ptr<ComboBoxAttachment> echoPatternAttachment, echoDivisionAttachment;
     std::unique_ptr<ButtonAttachment> echoOnAttachment, echoSyncAttachment;
+    std::unique_ptr<SliderAttachment> tapeDriveAttachment, tapeCompAttachment, tapeToneAttachment;
+    std::unique_ptr<SliderAttachment> tapeAgeAttachment, tapeMixAttachment;
+    std::unique_ptr<ComboBoxAttachment> tapeTypeAttachment;
+    std::unique_ptr<ButtonAttachment> tapeOnAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RockalizerAudioProcessorEditor)
 };

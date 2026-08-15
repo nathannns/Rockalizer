@@ -40,6 +40,8 @@ target_sources(Rockalizer
         Source/DSP/ChorusModule.h
         Source/DSP/EchoModule.cpp
         Source/DSP/EchoModule.h
+        Source/DSP/TapeModule.cpp
+        Source/DSP/TapeModule.h
 )
 
 target_compile_features(Rockalizer PRIVATE cxx_std_17)

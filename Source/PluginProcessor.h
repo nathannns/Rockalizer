@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include "DSP/ChorusModule.h"
 #include "DSP/EchoModule.h"
+#include "DSP/TapeModule.h"
 
 class RockalizerAudioProcessor final : public juce::AudioProcessor
 {
@@ -44,6 +45,7 @@ private:
     juce::dsp::StateVariableTPTFilter<float> highCutFilter;
     ChorusModule chorusModule;
     EchoModule echoModule;
+    TapeModule tapeModule;
     double currentSampleRate = 44100.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RockalizerAudioProcessor)
