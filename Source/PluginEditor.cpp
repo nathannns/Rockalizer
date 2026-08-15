@@ -16,6 +16,24 @@ const juce::Colour accent { 0xffff7a33 };
 RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
+    powerButton.setClickingTogglesState (true);
+    powerButton.setColour (juce::TextButton::buttonColourId, panel);
+    powerButton.setColour (juce::TextButton::buttonOnColourId, accent);
+    powerButton.setColour (juce::TextButton::textColourOffId, secondaryText);
+    powerButton.setColour (juce::TextButton::textColourOnId, background);
+    addAndMakeVisible (powerButton);
+    powerButton.setToggleState (processor.parameters.getRawParameterValue ("globalOn")->load() > 0.5f,
+                                juce::dontSendNotification);
+    powerButton.onClick = [this]
+    {
+        if (auto* parameter = processor.parameters.getParameter ("globalOn"))
+        {
+            parameter->beginChangeGesture();
+            parameter->setValueNotifyingHost (powerButton.getToggleState() ? 1.0f : 0.0f);
+            parameter->endChangeGesture();
+        }
+    };
+
     juce::Label unusedInputLabel;
     juce::Label unusedLowCutLabel;
     juce::Label unusedHighCutLabel;
@@ -124,10 +142,27 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     addAndMakeVisible (springOnButton);
     springOnAttachment = std::make_unique<ButtonAttachment> (processor.parameters, "springOn", springOnButton);
 
+    // Keep the header control above every subsequently-added child component.
+    powerButton.toFront (false);
+
     setResizable (true, true);
     setResizeLimits (900, 500, 1800, 990);
     getConstrainer()->setFixedAspectRatio (static_cast<double> (referenceWidth) / referenceHeight);
     setSize (referenceWidth, referenceHeight);
+    startTimerHz (30);
+}
+
+void RockalizerAudioProcessorEditor::timerCallback()
+{
+    const auto input = processor.inputPeakDb.load (std::memory_order_relaxed);
+    const auto output = processor.outputPeakDb.load (std::memory_order_relaxed);
+    displayInputDb = juce::jmax (input, displayInputDb - 1.5f);
+    displayOutputDb = juce::jmax (output, displayOutputDb - 1.5f);
+    inputClipped = processor.inputClip.exchange (false, std::memory_order_relaxed);
+    outputClipped = processor.outputClip.exchange (false, std::memory_order_relaxed);
+    powerButton.setToggleState (processor.parameters.getRawParameterValue ("globalOn")->load() > 0.5f,
+                                juce::dontSendNotification);
+    repaint();
 }
 
 void RockalizerAudioProcessorEditor::configureKnob (juce::Slider& slider,
@@ -184,12 +219,6 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
     g.setFont (juce::FontOptions (16.0f, juce::Font::bold));
     g.drawText ("<       DEFAULT       >", preset, juce::Justification::centred);
 
-    g.setColour (accent);
-    g.fillEllipse (1120.0f, 28.0f, 36.0f, 36.0f);
-    g.setColour (background);
-    g.setFont (juce::FontOptions (19.0f, juce::Font::bold));
-    g.drawText ("I", 1120, 28, 36, 36, juce::Justification::centred);
-
     const juce::StringArray moduleNames { "TAPE", "CHORUS", "ECHO", "SPRING" };
     const auto gap = 14.0f;
     const auto left = 28.0f;
@@ -242,6 +271,22 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
                 juce::Justification::centred);
     g.drawText ("OUTPUT", static_cast<int> (width - 152.0f), labelY, 110, 20,
                 juce::Justification::centred);
+
+    const auto drawMeter = [&g] (juce::Rectangle<float> meter, float levelDb, bool clipped)
+    {
+        g.setColour (background);
+        g.fillRoundedRectangle (meter, 4.0f);
+        const auto proportion = juce::jlimit (0.0f, 1.0f, juce::jmap (levelDb, -60.0f, 0.0f, 0.0f, 1.0f));
+        auto fill = meter.withWidth (meter.getWidth() * proportion);
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0xff38c878), meter.getX(), meter.getY(),
+                                                 clipped ? juce::Colour (0xffff4545) : juce::Colour (0xffffb13b),
+                                                 meter.getRight(), meter.getY(), false));
+        g.fillRoundedRectangle (fill, 4.0f);
+        g.setColour (clipped ? juce::Colour (0xffff4545) : panelBorder);
+        g.drawRoundedRectangle (meter, 4.0f, clipped ? 2.0f : 1.0f);
+    };
+    drawMeter ({ 154.0f, height - 67.0f, 248.0f, 12.0f }, displayInputDb, inputClipped);
+    drawMeter ({ width - 402.0f, height - 67.0f, 248.0f, 12.0f }, displayOutputDb, outputClipped);
 }
 
 void RockalizerAudioProcessorEditor::resized()
@@ -261,6 +306,8 @@ void RockalizerAudioProcessorEditor::resized()
     place (lowCutSlider, 458, 570);
     place (highCutSlider, 632, 570);
     place (outputSlider, 1048, 570);
+    powerButton.setBounds (juce::roundToInt (1092 * scaleX), juce::roundToInt (24 * scaleY),
+                           juce::roundToInt (80 * scaleX), juce::roundToInt (44 * scaleY));
 
     const auto chorusCardX = 318;
     const auto placeChorus = [scaleX, scaleY] (juce::Slider& slider,

@@ -13,6 +13,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::cr
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
+    layout.add (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "globalOn", 1 }, "Global On", true));
+
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "inputGain", 1 }, "Input",
         juce::NormalisableRange<float> { -24.0f, 24.0f, 0.1f }, 0.0f,
@@ -120,6 +123,10 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     tapeModule.prepare (spec);
     springModule.prepare (spec);
 
+    globalDryBuffer.setSize (getTotalNumOutputChannels(), samplesPerBlock, false, false, true);
+    globalWet.reset (sampleRate, 0.02);
+    globalWet.setCurrentAndTargetValue (parameters.getRawParameterValue ("globalOn")->load() > 0.5f ? 1.0f : 0.0f);
+
     inputGain.setRampDurationSeconds (0.02);
     outputGain.setRampDurationSeconds (0.02);
     lowCutFilter.setType (juce::dsp::StateVariableTPTFilterType::highpass);
@@ -160,6 +167,19 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
          channel < getTotalNumOutputChannels();
          ++channel)
         buffer.clear (channel, 0, buffer.getNumSamples());
+
+    jassert (buffer.getNumSamples() <= globalDryBuffer.getNumSamples());
+    const auto channels = juce::jmin (buffer.getNumChannels(), globalDryBuffer.getNumChannels());
+    for (int channel = 0; channel < channels; ++channel)
+        globalDryBuffer.copyFrom (channel, 0, buffer, channel, 0, buffer.getNumSamples());
+
+    float inputPeak = 0.0f;
+    for (int channel = 0; channel < channels; ++channel)
+        inputPeak = juce::jmax (inputPeak, buffer.getMagnitude (channel, 0, buffer.getNumSamples()));
+    inputPeakDb.store (juce::Decibels::gainToDecibels (inputPeak, -100.0f), std::memory_order_relaxed);
+    if (inputPeak >= 1.0f)
+        inputClip.store (true, std::memory_order_relaxed);
+    globalWet.setTargetValue (parameters.getRawParameterValue ("globalOn")->load() > 0.5f ? 1.0f : 0.0f);
 
     inputGain.setGainDecibels (parameters.getRawParameterValue ("inputGain")->load());
     lowCutFilter.setCutoffFrequency (parameters.getRawParameterValue ("lowCut")->load());
@@ -215,10 +235,24 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         static_cast<int> (parameters.getRawParameterValue ("springType")->load()));
     springModule.process (buffer);
 
-    // Tape and Spring will be inserted around these modules later.
-
     highCutFilter.process (context);
     outputGain.process (context);
+
+    for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+    {
+        const auto wet = globalWet.getNextValue();
+        const auto dry = 1.0f - wet;
+        for (int channel = 0; channel < channels; ++channel)
+            buffer.setSample (channel, sample,
+                buffer.getSample (channel, sample) * wet + globalDryBuffer.getSample (channel, sample) * dry);
+    }
+
+    float outputPeak = 0.0f;
+    for (int channel = 0; channel < channels; ++channel)
+        outputPeak = juce::jmax (outputPeak, buffer.getMagnitude (channel, 0, buffer.getNumSamples()));
+    outputPeakDb.store (juce::Decibels::gainToDecibels (outputPeak, -100.0f), std::memory_order_relaxed);
+    if (outputPeak >= 1.0f)
+        outputClip.store (true, std::memory_order_relaxed);
 }
 
 juce::AudioProcessorEditor* RockalizerAudioProcessor::createEditor()

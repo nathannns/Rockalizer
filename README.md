@@ -17,6 +17,8 @@ Checkpoint v0.5 adds dual Tape modes: polished Studio reel-to-reel character
 and compressed, unstable Cassette/Portastudio-style character.
 Checkpoint v0.6 embeds seven supplied spring IRs and adds Spring Type, Decay,
 Dwell, Tone, Drip, Mix and smooth bypass.
+Checkpoint v0.7 adds a click-free global power/bypass control, live input and
+output peak meters, clip indication, and a preserved dry path around the chain.
 
 ## macOS build
 

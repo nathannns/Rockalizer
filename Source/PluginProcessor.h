@@ -5,6 +5,7 @@
 #include "DSP/EchoModule.h"
 #include "DSP/TapeModule.h"
 #include "DSP/SpringModule.h"
+#include <atomic>
 
 class RockalizerAudioProcessor final : public juce::AudioProcessor
 {
@@ -37,6 +38,11 @@ public:
 
     juce::AudioProcessorValueTreeState parameters;
 
+    std::atomic<float> inputPeakDb { -100.0f };
+    std::atomic<float> outputPeakDb { -100.0f };
+    std::atomic<bool> inputClip { false };
+    std::atomic<bool> outputClip { false };
+
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
 private:
@@ -48,6 +54,8 @@ private:
     EchoModule echoModule;
     TapeModule tapeModule;
     SpringModule springModule;
+    juce::AudioBuffer<float> globalDryBuffer;
+    juce::SmoothedValue<float> globalWet;
     double currentSampleRate = 44100.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RockalizerAudioProcessor)

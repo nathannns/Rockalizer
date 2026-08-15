@@ -3,7 +3,8 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 
-class RockalizerAudioProcessorEditor final : public juce::AudioProcessorEditor
+class RockalizerAudioProcessorEditor final : public juce::AudioProcessorEditor,
+                                              private juce::Timer
 {
 public:
     explicit RockalizerAudioProcessorEditor (RockalizerAudioProcessor&);
@@ -21,6 +22,7 @@ private:
                         juce::Label& label,
                         const juce::String& name,
                         const juce::String& suffix);
+    void timerCallback() override;
 
     RockalizerAudioProcessor& processor;
 
@@ -54,6 +56,11 @@ private:
     juce::Label springDecayLabel, springDwellLabel, springToneLabel, springDripLabel, springMixLabel;
     juce::ComboBox springTypeBox;
     juce::ToggleButton springOnButton { "ON" };
+    juce::TextButton powerButton { "POWER" };
+    float displayInputDb = -100.0f;
+    float displayOutputDb = -100.0f;
+    bool inputClipped = false;
+    bool outputClipped = false;
 
     std::unique_ptr<SliderAttachment> inputAttachment;
     std::unique_ptr<SliderAttachment> lowCutAttachment;
