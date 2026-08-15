@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "DSP/ChorusModule.h"
+#include "DSP/EchoModule.h"
 
 class RockalizerAudioProcessor final : public juce::AudioProcessor
 {
@@ -21,7 +22,7 @@ public:
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
-    double getTailLengthSeconds() const override { return 0.0; }
+    double getTailLengthSeconds() const override { return 4.0; }
 
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
@@ -42,6 +43,7 @@ private:
     juce::dsp::StateVariableTPTFilter<float> lowCutFilter;
     juce::dsp::StateVariableTPTFilter<float> highCutFilter;
     ChorusModule chorusModule;
+    EchoModule echoModule;
     double currentSampleRate = 44100.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RockalizerAudioProcessor)

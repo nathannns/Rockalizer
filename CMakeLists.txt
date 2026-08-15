@@ -38,6 +38,8 @@ target_sources(Rockalizer
         Source/PluginProcessor.h
         Source/DSP/ChorusModule.cpp
         Source/DSP/ChorusModule.h
+        Source/DSP/EchoModule.cpp
+        Source/DSP/EchoModule.h
 )
 
 target_compile_features(Rockalizer PRIVATE cxx_std_17)

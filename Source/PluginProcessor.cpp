@@ -61,6 +61,24 @@ juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::cr
         juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, 25.0f,
         juce::AudioParameterFloatAttributes().withLabel ("%")));
 
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "echoOn", 1 }, "Echo On", true));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "echoSync", 1 }, "Echo Sync", false));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "echoPattern", 1 }, "Echo Pattern",
+        juce::StringArray { "Straight", "Bounce", "Gallop", "Cluster", "Wash" }, 0));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "echoDivision", 1 }, "Echo Division",
+        juce::StringArray { "1/4", "1/8", "1/8 D", "1/8 T", "1/16", "1/16 D" }, 1));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "echoTime", 1 }, "Echo Time",
+        juce::NormalisableRange<float> { 40.0f, 1200.0f, 1.0f, 0.35f }, 375.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("ms")));
+    for (auto item : { std::pair { "echoRepeats", "Echo Repeats" }, std::pair { "echoWobble", "Echo Wobble" },
+                       std::pair { "echoDrive", "Echo Drive" }, std::pair { "echoMix", "Echo Mix" } })
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { item.first, 1 }, item.second,
+            juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, juce::String (item.first) == "echoMix" ? 25.0f : 30.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("%")));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "echoTone", 1 }, "Echo Tone",
+        juce::NormalisableRange<float> { 1200.0f, 14000.0f, 1.0f, 0.35f }, 6500.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("Hz")));
+
     return layout;
 }
 
@@ -78,6 +96,7 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     lowCutFilter.prepare (spec);
     highCutFilter.prepare (spec);
     chorusModule.prepare (spec);
+    echoModule.prepare (spec);
 
     inputGain.setRampDurationSeconds (0.02);
     outputGain.setRampDurationSeconds (0.02);
@@ -89,6 +108,7 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     lowCutFilter.reset();
     highCutFilter.reset();
     chorusModule.reset();
+    echoModule.reset();
 }
 
 void RockalizerAudioProcessor::releaseResources()
@@ -139,7 +159,25 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         parameters.getRawParameterValue ("chorusOn")->load() > 0.5f);
     chorusModule.process (buffer);
 
-    // Tape, Echo and Spring will be inserted around this module later.
+    auto echoTime = parameters.getRawParameterValue ("echoTime")->load();
+    if (parameters.getRawParameterValue ("echoSync")->load() > 0.5f)
+    {
+        auto bpm = 120.0;
+        if (auto* playHead = getPlayHead())
+            if (auto position = playHead->getPosition())
+                if (auto hostBpm = position->getBpm()) bpm = *hostBpm;
+        constexpr float beats[] { 1.0f, 0.5f, 0.75f, 1.0f / 3.0f, 0.25f, 0.375f };
+        const auto division = juce::jlimit (0, 5, static_cast<int> (parameters.getRawParameterValue ("echoDivision")->load()));
+        echoTime = static_cast<float> (60000.0 / bpm) * beats[division];
+    }
+    echoModule.setParameters (echoTime,
+        parameters.getRawParameterValue ("echoRepeats")->load(), parameters.getRawParameterValue ("echoTone")->load(),
+        parameters.getRawParameterValue ("echoWobble")->load(), parameters.getRawParameterValue ("echoDrive")->load(),
+        parameters.getRawParameterValue ("echoMix")->load(), parameters.getRawParameterValue ("echoOn")->load() > 0.5f,
+        static_cast<int> (parameters.getRawParameterValue ("echoPattern")->load()));
+    echoModule.process (buffer);
+
+    // Tape and Spring will be inserted around these modules later.
 
     highCutFilter.process (context);
     outputGain.process (context);

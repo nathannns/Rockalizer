@@ -15,6 +15,7 @@ public:
 private:
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
+    using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
 
     void configureKnob (juce::Slider& slider,
                         juce::Label& label,
@@ -39,6 +40,12 @@ private:
     juce::Label chorusToneLabel;
     juce::Label chorusMixLabel;
     juce::ToggleButton chorusBypassButton { "ON" };
+    juce::Slider echoTimeSlider, echoRepeatsSlider, echoToneSlider;
+    juce::Slider echoWobbleSlider, echoDriveSlider, echoMixSlider;
+    juce::Label echoTimeLabel, echoRepeatsLabel, echoToneLabel;
+    juce::Label echoWobbleLabel, echoDriveLabel, echoMixLabel;
+    juce::ComboBox echoPatternBox, echoDivisionBox;
+    juce::ToggleButton echoOnButton { "ON" }, echoSyncButton { "SYNC" };
 
     std::unique_ptr<SliderAttachment> inputAttachment;
     std::unique_ptr<SliderAttachment> lowCutAttachment;
@@ -50,6 +57,10 @@ private:
     std::unique_ptr<SliderAttachment> chorusToneAttachment;
     std::unique_ptr<SliderAttachment> chorusMixAttachment;
     std::unique_ptr<ButtonAttachment> chorusBypassAttachment;
+    std::unique_ptr<SliderAttachment> echoTimeAttachment, echoRepeatsAttachment, echoToneAttachment;
+    std::unique_ptr<SliderAttachment> echoWobbleAttachment, echoDriveAttachment, echoMixAttachment;
+    std::unique_ptr<ComboBoxAttachment> echoPatternAttachment, echoDivisionAttachment;
+    std::unique_ptr<ButtonAttachment> echoOnAttachment, echoSyncAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RockalizerAudioProcessorEditor)
 };

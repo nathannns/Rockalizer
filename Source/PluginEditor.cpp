@@ -49,6 +49,39 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
                                                                  "chorusOn",
                                                                  chorusBypassButton);
 
+    configureKnob (echoTimeSlider, echoTimeLabel, "TIME", " ms");
+    configureKnob (echoRepeatsSlider, echoRepeatsLabel, "REPEATS", " %");
+    configureKnob (echoToneSlider, echoToneLabel, "TONE", " Hz");
+    configureKnob (echoWobbleSlider, echoWobbleLabel, "WOBBLE", " %");
+    configureKnob (echoDriveSlider, echoDriveLabel, "DRIVE", " %");
+    configureKnob (echoMixSlider, echoMixLabel, "MIX", " %");
+    echoTimeAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoTime", echoTimeSlider);
+    echoRepeatsAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoRepeats", echoRepeatsSlider);
+    echoToneAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoTone", echoToneSlider);
+    echoWobbleAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoWobble", echoWobbleSlider);
+    echoDriveAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoDrive", echoDriveSlider);
+    echoMixAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoMix", echoMixSlider);
+
+    echoPatternBox.addItemList ({ "STRAIGHT", "BOUNCE", "GALLOP", "CLUSTER", "WASH" }, 1);
+    echoDivisionBox.addItemList ({ "1/4", "1/8", "1/8 D", "1/8 T", "1/16", "1/16 D" }, 1);
+    for (auto* box : { &echoPatternBox, &echoDivisionBox })
+    {
+        box->setColour (juce::ComboBox::backgroundColourId, panel);
+        box->setColour (juce::ComboBox::textColourId, primaryText);
+        box->setColour (juce::ComboBox::outlineColourId, panelBorder);
+        addAndMakeVisible (*box);
+    }
+    echoPatternAttachment = std::make_unique<ComboBoxAttachment> (processor.parameters, "echoPattern", echoPatternBox);
+    echoDivisionAttachment = std::make_unique<ComboBoxAttachment> (processor.parameters, "echoDivision", echoDivisionBox);
+    for (auto* button : { &echoOnButton, &echoSyncButton })
+    {
+        button->setColour (juce::ToggleButton::textColourId, primaryText);
+        button->setColour (juce::ToggleButton::tickColourId, accent);
+        addAndMakeVisible (*button);
+    }
+    echoOnAttachment = std::make_unique<ButtonAttachment> (processor.parameters, "echoOn", echoOnButton);
+    echoSyncAttachment = std::make_unique<ButtonAttachment> (processor.parameters, "echoSync", echoSyncButton);
+
     setResizable (true, true);
     setResizeLimits (900, 500, 1800, 990);
     getConstrainer()->setFixedAspectRatio (static_cast<double> (referenceWidth) / referenceHeight);
@@ -142,7 +175,7 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
                               card.getX() + 14.0f,
                               card.getRight() - 14.0f);
 
-        if (moduleNames[index] != "CHORUS")
+        if (moduleNames[index] != "CHORUS" && moduleNames[index] != "ECHO")
         {
             g.setColour (secondaryText);
             g.setFont (juce::FontOptions (14.0f));
@@ -213,4 +246,28 @@ void RockalizerAudioProcessorEditor::resized()
                                   juce::roundToInt (111 * scaleY),
                                   juce::roundToInt (60 * scaleX),
                                   juce::roundToInt (26 * scaleY));
+
+    const auto echoCardX = 608;
+    const auto placeEcho = [scaleX, scaleY] (juce::Slider& slider, juce::Label& label,
+                                             int x, int y, int size = 76)
+    {
+        label.setBounds (juce::roundToInt (x * scaleX), juce::roundToInt (y * scaleY),
+                         juce::roundToInt (size * scaleX), juce::roundToInt (17 * scaleY));
+        slider.setBounds (juce::roundToInt (x * scaleX), juce::roundToInt ((y + 16) * scaleY),
+                          juce::roundToInt (size * scaleX), juce::roundToInt (70 * scaleY));
+    };
+    placeEcho (echoTimeSlider, echoTimeLabel, echoCardX + 12, 176);
+    echoPatternBox.setBounds (juce::roundToInt ((echoCardX + 98) * scaleX), juce::roundToInt (194 * scaleY),
+                              juce::roundToInt (158 * scaleX), juce::roundToInt (28 * scaleY));
+    echoDivisionBox.setBounds (juce::roundToInt ((echoCardX + 98) * scaleX), juce::roundToInt (228 * scaleY),
+                               juce::roundToInt (82 * scaleX), juce::roundToInt (26 * scaleY));
+    echoSyncButton.setBounds (juce::roundToInt ((echoCardX + 184) * scaleX), juce::roundToInt (226 * scaleY),
+                              juce::roundToInt (76 * scaleX), juce::roundToInt (28 * scaleY));
+    placeEcho (echoRepeatsSlider, echoRepeatsLabel, echoCardX + 8, 284);
+    placeEcho (echoToneSlider, echoToneLabel, echoCardX + 96, 284);
+    placeEcho (echoWobbleSlider, echoWobbleLabel, echoCardX + 184, 284);
+    placeEcho (echoDriveSlider, echoDriveLabel, echoCardX + 50, 402, 82);
+    placeEcho (echoMixSlider, echoMixLabel, echoCardX + 148, 402, 92);
+    echoOnButton.setBounds (juce::roundToInt ((echoCardX + 208) * scaleX), juce::roundToInt (111 * scaleY),
+                            juce::roundToInt (58 * scaleX), juce::roundToInt (26 * scaleY));
 }
