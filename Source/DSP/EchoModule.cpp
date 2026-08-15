@@ -34,7 +34,7 @@ void EchoModule::setParameters (float timeMs, float repeats, float toneHz, float
 {
     delaySamples.setTargetValue (juce::jlimit (0.04f, 2.5f, timeMs * 0.001f)
                                       * static_cast<float> (sampleRate));
-    feedbackValue.setTargetValue (juce::jlimit (0.0f, 0.92f, repeats * 0.0092f));
+    feedbackValue.setTargetValue (juce::jlimit (0.0f, 0.86f, repeats * 0.0086f));
     toneValue.setTargetValue (juce::jlimit (1200.0f, 14000.0f, toneHz));
     wobbleValue.setTargetValue (juce::jlimit (0.0f, 1.0f, wobble * 0.01f));
     driveValue.setTargetValue (juce::jlimit (0.0f, 1.0f, drive * 0.01f));
@@ -75,6 +75,9 @@ void EchoModule::getPattern (float* ratios, float* gains, int& taps) const
 
 void EchoModule::process (juce::AudioBuffer<float>& buffer)
 {
+    if (! wetMix.isSmoothing() && wetMix.getCurrentValue() <= 0.00001f)
+        return;
+
     float ratios[3] {}, gains[3] {}; int taps = 1;
     getPattern (ratios, gains, taps);
     const auto channels = juce::jmin (buffer.getNumChannels(), delayBuffer.getNumChannels());
@@ -86,27 +89,45 @@ void EchoModule::process (juce::AudioBuffer<float>& buffer)
         const auto mix = wetMix.getNextValue();
         const auto feedback = feedbackValue.getNextValue();
         const auto toneCutoff = toneValue.getNextValue();
-        const auto wobbleDepth = wobbleValue.getNextValue();
+        const auto wobbleDepth = std::pow (wobbleValue.getNextValue(), 0.78f);
         const auto driveAmount = driveValue.getNextValue();
 
         for (int channel = 0; channel < channels; ++channel)
         {
             const auto phaseOffset = channel == 0 ? 0.0f : 1.7f;
-            const auto modulation = std::sin (lfoPhase + phaseOffset)
-                                  * wobbleDepth * static_cast<float> (sampleRate) * 0.004f;
+            const auto slowWobble = std::sin (lfoPhase + phaseOffset) * 0.0048f;
+            const auto gentleFlutter = std::sin (lfoPhase * 5.35f + phaseOffset * 0.65f) * 0.00048f;
+            const auto modulation = (slowWobble + gentleFlutter) * wobbleDepth
+                                  * static_cast<float> (sampleRate);
             float wet = 0.0f;
             for (int tap = 0; tap < taps; ++tap)
                 wet += readDelay (channel, juce::jmax (1.0f, baseDelay * ratios[tap] + modulation)) * gains[tap];
             wet /= std::sqrt (static_cast<float> (taps));
 
             auto feedbackSample = processFeedbackTone (channel, wet, toneCutoff);
-            const auto gain = 1.0f + driveAmount * 5.0f;
-            feedbackSample = std::tanh (feedbackSample * gain) / std::tanh (gain);
+            const auto gain = 1.0f + driveAmount * 4.0f;
+            // Normalise by the pre-shaper gain, not tanh(gain). The previous
+            // formula amplified quiet repeats inside the feedback loop and
+            // could make driven multi-tap presets regenerate unexpectedly.
+            feedbackSample = std::tanh (feedbackSample * gain) / gain;
 
             const auto input = buffer.getSample (channel, sample);
-            delayBuffer.setSample (channel, writeIndex,
-                                   juce::jlimit (-2.0f, 2.0f, input + feedbackSample * feedback));
-            buffer.setSample (channel, sample, input * (1.0f - mix) + wet * mix);
+            // A hard jlimit introduced a derivative discontinuity whenever a
+            // loud feedback peak touched the rail. At high Mix that edge was
+            // exposed as a click. This wide soft rail is transparent at normal
+            // levels but remains bounded under runaway input.
+            const auto writeSample = input + feedbackSample * feedback;
+            const auto smoothRail = [] (float value, float knee, float ceiling)
+            {
+                const auto magnitude = std::abs (value);
+                if (magnitude <= knee)
+                    return value;
+                const auto range = ceiling - knee;
+                return std::copysign (knee + range * std::tanh ((magnitude - knee) / range), value);
+            };
+            delayBuffer.setSample (channel, writeIndex, smoothRail (writeSample, 1.0f, 2.0f));
+            const auto safeWet = smoothRail (wet, 2.0f, 4.0f);
+            buffer.setSample (channel, sample, input * (1.0f - mix) + safeWet * mix);
         }
 
         writeIndex = (writeIndex + 1) % delayBuffer.getNumSamples();

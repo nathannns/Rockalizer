@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Rockalizer VERSION 0.1.0 LANGUAGES C CXX)
+project(Rockalizer VERSION 0.33.0 LANGUAGES C CXX)
 
 include(FetchContent)
 
@@ -14,13 +14,24 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(JUCE)
 
 juce_add_binary_data(RockalizerData SOURCES
-    Resources/ImpulseResponses/spring_gbsr.wav
-    Resources/ImpulseResponses/spring_deluxe.wav
-    Resources/ImpulseResponses/spring_space.wav
-    Resources/ImpulseResponses/spring_9100.wav
-    Resources/ImpulseResponses/spring_echomixer.wav
-    Resources/ImpulseResponses/spring_schaller.wav
-    Resources/ImpulseResponses/spring_pioneer.wav
+    Resources/Images/knob_v1.png
+    Resources/Images/plugin_background.png
+    Resources/Images/rockalizer_logo_v1.png
+    Resources/Images/logo_tape_v3.png
+    Resources/Images/logo_chorus_v2.png
+    Resources/Images/logo_echo_v2.png
+    Resources/Images/logo_spring_v2.png
+    Resources/Images/pedal_tape_v3.png
+    Resources/Images/pedal_chorus_v2.png
+    Resources/Images/pedal_echo_v2.png
+    Resources/Images/pedal_spring_v2.png
+    Resources/ImpulseResponses/Clean/spring_gbsr_clean.wav
+    Resources/ImpulseResponses/Clean/spring_deluxe_clean.wav
+    Resources/ImpulseResponses/Clean/spring_space_clean.wav
+    Resources/ImpulseResponses/Clean/spring_9100_clean.wav
+    Resources/ImpulseResponses/Clean/spring_echomixer_clean.wav
+    Resources/ImpulseResponses/Clean/spring_schaller_clean.wav
+    Resources/ImpulseResponses/Clean/spring_pioneer_clean.wav
 )
 
 juce_add_plugin(Rockalizer
@@ -31,11 +42,15 @@ juce_add_plugin(Rockalizer
     NEEDS_MIDI_OUTPUT FALSE
     IS_MIDI_EFFECT FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
+    MICROPHONE_PERMISSION_ENABLED TRUE
+    MICROPHONE_PERMISSION_TEXT "Rockalizer needs audio input access to process instruments and microphones."
     COPY_PLUGIN_AFTER_BUILD TRUE
     PLUGIN_MANUFACTURER_CODE Nath
     PLUGIN_CODE Rkzr
     FORMATS AU VST3 Standalone
     PRODUCT_NAME "Rockalizer"
+    ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/Resources/Images/rockalizer_app_icon.png"
+    ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/Resources/Images/rockalizer_app_icon.png"
 )
 
 juce_generate_juce_header(Rockalizer)

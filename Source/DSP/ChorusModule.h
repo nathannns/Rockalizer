@@ -7,23 +7,17 @@ class ChorusModule
 public:
     void prepare (const juce::dsp::ProcessSpec& spec);
     void reset();
-
-    void setParameters (float rateHz,
-                        float depthPercent,
-                        float widthPercent,
-                        float toneHz,
-                        float mixPercent,
-                        bool enabled);
-
+    void setParameters (float rateHz, float depthPercent, float widthPercent,
+                        float toneHz, float mixPercent, bool enabled);
     void process (juce::AudioBuffer<float>& buffer);
 
 private:
-    juce::dsp::Chorus<float> chorus;
-    juce::dsp::StateVariableTPTFilter<float> wetToneFilter;
-    juce::AudioBuffer<float> wetBuffer;
-    juce::SmoothedValue<float> wetMix;
+    float readDelay (int channel, float distance) const;
 
-    float stereoWidth = 1.0f;
-    int maximumBlockSize = 0;
-    int channelCount = 0;
+    juce::AudioBuffer<float> delayBuffer;
+    juce::SmoothedValue<float> rateValue, depthValue, widthValue, toneValue, wetMix;
+    std::vector<float> toneState, crossLowState, feedbackState;
+    double sampleRate = 44100.0;
+    int writeIndex = 0;
+    float lfoPhase = 0.0f;
 };

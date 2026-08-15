@@ -15,8 +15,8 @@ private:
     float readWow (int channel, float delayInSamples) const;
     juce::AudioBuffer<float> wowBuffer;
     juce::SmoothedValue<float> wetMix;
-    std::vector<float> envelope, toneState, bassState;
-    juce::Random noise { 0x524f434b };
+    std::vector<float> envelope, detectorLowState, magnetisationState;
+    std::vector<float> toneState, bassState, midState;
     double sampleRate = 44100.0;
     int writeIndex = 0, tapeType = studio;
     float driveValue = 0.0f, compValue = 0.0f, toneValue = 0.5f, ageValue = 0.0f;

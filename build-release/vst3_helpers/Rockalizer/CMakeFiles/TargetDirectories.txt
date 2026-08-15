@@ -1,0 +1,3 @@
+/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/vst3_helpers/Rockalizer/CMakeFiles/vst3_helper.dir
+/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/vst3_helpers/Rockalizer/CMakeFiles/edit_cache.dir
+/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/vst3_helpers/Rockalizer/CMakeFiles/rebuild_cache.dir

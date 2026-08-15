@@ -14,13 +14,17 @@ public:
 
 private:
     void handleAsyncUpdate() override;
-    void loadImpulse (int index);
+    void loadImpulse (int index, int decayStep);
 
     juce::dsp::Convolution convolution;
-    juce::dsp::StateVariableTPTFilter<float> toneFilter, dripFilter;
+    juce::dsp::StateVariableTPTFilter<float> toneFilter, bodyFilter, dripFilter;
     juce::AudioBuffer<float> wetBuffer, dripBuffer;
     juce::SmoothedValue<float> wetMix;
     std::atomic<int> requestedImpulse { 0 };
-    int loadedImpulse = -1, maximumBlockSize = 0, channelCount = 0;
+    std::atomic<int> requestedDecayStep { 8 };
+    int loadedImpulse = -1, loadedDecayStep = -1;
+    int maximumBlockSize = 0, channelCount = 0;
+    double sampleRate = 44100.0;
+    std::vector<float> inputEnvelope;
     float decayAmount = 0.5f, dwellAmount = 0.2f, dripAmount = 0.2f;
 };

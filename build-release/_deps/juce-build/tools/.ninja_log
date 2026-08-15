@@ -1,0 +1,17 @@
+# ninja log v7
+1	42	1786827305114656149	/Users/nathanielsantiaji/Downloads/Rockalizer-v0.33/build-release/_deps/juce-build/tools/CMakeFiles/cmake.verify_globs	3d54f1f173262926
+44	398	1786827305157398767	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_Sheenbidi.c.o	999ffa17ee1e686f
+43	2330	1786827305156288725	extras/Build/juceaide/CMakeFiles/juceaide.dir/Main.cpp.o	ab3f5066a0fd4f27
+43	2364	1786827305156553517	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/juce_build_tools/juce_build_tools.cpp.o	80310d1b1d455c4
+2332	2431	1786827307445836986	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_core/juce_core_CompilationTime.cpp.o	7580619867070dff
+400	3152	1786827305513524078	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_events/juce_events.mm.o	6d800c5363bac896
+43	3318	1786827305156689850	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_gui_basics/juce_gui_basics_2.cpp.o	4cb71de7d8727dd
+43	3829	1786827305157054558	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_gui_basics/juce_gui_basics_5.cpp.o	d83ab40625291abf
+2431	3832	1786827307545152385	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_data_structures/juce_data_structures.mm.o	d2347b2f2535b4b
+43	3936	1786827305156933558	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_gui_basics/juce_gui_basics_4.cpp.o	ffa62bc0e4f2ed5a
+43	4816	1786827305156817558	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_gui_basics/juce_gui_basics_3.cpp.o	8f883c8455671646
+2364	5533	1786827307478032106	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_core/juce_core.mm.o	e8805854c5f7e7a5
+43	5901	1786827305157170475	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_gui_basics/juce_gui_basics.mm.o	a9425c845f02f09b
+44	6398	1786827305157514267	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics.mm.o	6dceec722175b1fc
+44	6699	1786827305157284850	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_Harfbuzz.cpp.o	a42204e2d5cba288
+6700	6903	1786827311813653837	extras/Build/juceaide/juceaide_artefacts/Custom/juceaide	384f7416c8d927e8

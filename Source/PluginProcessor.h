@@ -61,6 +61,13 @@ private:
     SpringModule springModule;
     juce::AudioBuffer<float> globalDryBuffer;
     juce::SmoothedValue<float> globalWet;
+    std::array<float, 3> noiseGateBandEnvelope { 0.0f, 0.0f, 0.0f };
+    float noiseGateLowState = 0.0f;
+    float noiseGateMidState = 0.0f;
+    float noiseGateGain = 1.0f;
+    int noiseGateHoldSamples = 0;
+    bool noiseGateOpen = true;
+    std::atomic<bool> effectStateResetRequested { false };
     double currentSampleRate = 44100.0;
     int currentPresetIndex = 0;
 
