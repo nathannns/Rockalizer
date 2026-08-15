@@ -9,7 +9,7 @@ RockalizerAudioProcessor::RockalizerAudioProcessor()
 {
     // The header initially names Clean Studio, so a fresh instance must start
     // with that preset's values rather than unrelated parameter defaults.
-    loadPreset (0);
+    loadPreset (1);
 }
 
 juce::File RockalizerAudioProcessor::getUserPresetDirectory() const
@@ -20,7 +20,7 @@ juce::File RockalizerAudioProcessor::getUserPresetDirectory() const
 
 juce::StringArray RockalizerAudioProcessor::getPresetNames() const
 {
-    juce::StringArray names { "Clean Studio", "Warm Cassette", "Wide Indie", "Space Echo",
+    juce::StringArray names { "-- INIT --", "Clean Studio", "Warm Cassette", "Wide Indie", "Space Echo",
                               "Vintage Spring", "Lo-Fi Dream", "Vocal Ambience", "Guitar Room" };
     juce::Array<juce::File> files;
     getUserPresetDirectory().findChildFiles (files, juce::File::findFiles, false, "*.xml");
@@ -39,7 +39,7 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
         const auto* identified = dynamic_cast<juce::AudioProcessorParameterWithID*> (parameter);
         if (identified == nullptr
             || (identified->paramID != "input1On" && identified->paramID != "input2On"
-                && identified->paramID != "noiseCut" && identified->paramID != "inputLevel"))
+                && identified->paramID != "inputLevel"))
             parameter->setValueNotifyingHost (parameter->getDefaultValue());
     }
 
@@ -48,6 +48,28 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
         if (auto* parameter = parameters.getParameter (parameterID))
             parameter->setValueNotifyingHost (parameter->convertTo0to1 (plainValue));
     };
+
+    if (presetIndex == 0) // -- INIT --
+    {
+        // Neutral utility preset: all creative controls are zero. Filters use
+        // their transparent endpoints because literal zero is outside their
+        // valid ranges and would otherwise mute or unnecessarily filter input.
+        for (const auto* parameterID : { "noiseCut", "inputGain", "outputGain",
+                                         "tapeDrive", "tapeComp", "tapeTone", "tapeAge", "tapeMix",
+                                         "chorusDepth", "chorusWidth", "chorusMix",
+                                         "echoRepeats", "echoWobble", "echoDrive", "echoMix",
+                                         "springDecay", "springDwell", "springTone", "springDrip", "springMix" })
+            set (parameterID, 0.0f);
+        set ("chorusTone", 1000.0f);
+        set ("chorusRate", 0.05f);
+        set ("echoTone", 1200.0f);
+        set ("echoTime", 40.0f);
+        set ("lowCut", 20.0f);
+        set ("highCut", 20000.0f);
+        return;
+    }
+
+    --presetIndex; // Remaining cases retain the established factory sounds.
 
     switch (presetIndex)
     {
@@ -115,10 +137,9 @@ bool RockalizerAudioProcessor::loadPreset (int presetIndex)
     // the sound preset. Keep it unchanged while factory or user presets load.
     const auto input1WasOn = parameters.getRawParameterValue ("input1On")->load() > 0.5f;
     const auto input2WasOn = parameters.getRawParameterValue ("input2On")->load() > 0.5f;
-    const auto noiseCutWas = parameters.getRawParameterValue ("noiseCut")->load();
     const auto inputLevelWas = parameters.getRawParameterValue ("inputLevel")->load();
 
-    if (presetIndex < 8)
+    if (presetIndex < 9)
         loadFactoryPreset (presetIndex);
     else
     {
@@ -141,8 +162,6 @@ bool RockalizerAudioProcessor::loadPreset (int presetIndex)
     };
     restoreSwitch ("input1On", input1WasOn);
     restoreSwitch ("input2On", input2WasOn);
-    if (auto* parameter = parameters.getParameter ("noiseCut"))
-        parameter->setValueNotifyingHost (parameter->convertTo0to1 (noiseCutWas));
     if (auto* parameter = parameters.getParameter ("inputLevel"))
         parameter->setValueNotifyingHost (parameter->convertTo0to1 (inputLevelWas));
 
@@ -603,6 +622,9 @@ void RockalizerAudioProcessor::getStateInformation (juce::MemoryBlock& destinati
 {
     auto state = parameters.copyState();
     state.setProperty ("currentPresetIndex", currentPresetIndex, nullptr);
+    const auto names = getPresetNames();
+    if (juce::isPositiveAndBelow (currentPresetIndex, names.size()))
+        state.setProperty ("currentPresetName", names[currentPresetIndex], nullptr);
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destinationData);
 }
@@ -615,13 +637,18 @@ void RockalizerAudioProcessor::setStateInformation (const void* data, int sizeIn
             return;
 
         auto state = juce::ValueTree::fromXml (*xml);
-        const auto presetToRestore = static_cast<int> (state.getProperty ("currentPresetIndex", 0));
+        auto presetToRestore = 1;
+        if (state.hasProperty ("currentPresetName"))
+            presetToRestore = getPresetNames().indexOf (state.getProperty ("currentPresetName").toString());
+        else
+            // v0.33 and earlier stored indices before -- INIT -- was inserted.
+            presetToRestore = static_cast<int> (state.getProperty ("currentPresetIndex", 0)) + 1;
         parameters.replaceState (state);
 
         // A named preset shown in the header must always sound exactly like
         // that preset. Interface-only input settings are preserved by loadPreset().
         if (! loadPreset (presetToRestore))
-            loadPreset (0);
+            loadPreset (1);
     }
 }
 

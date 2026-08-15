@@ -209,6 +209,30 @@ columns are tightened and centred on every pedal. Studio Tape gains 3 dB more
 record drive, a broader saturation curve and slightly stronger magnetic memory
 for more audible but still level-compensated analog-style colour.
 
+Checkpoint v0.34 makes Clean Studio the deterministic startup sound for every
+new instance and adds a selectable -- INIT -- factory preset with all creative
+knobs at zero, unity input/output and transparent filter endpoints. Interface
+input routing remains outside preset recall. Echo Mix now uses a curved taper
+for much finer low-range control: low settings create subtle ambience while the
+top of the knob still reaches a fully wet delay.
+
+Checkpoint v0.35 separates the two Tape media more clearly at ordinary guitar
+settings. Cassette now keeps an audibly narrower bandwidth, stronger low-mid
+body, higher record level, greater bias asymmetry and more magnetic memory even
+with AGE at zero, while Studio retains its wider, cleaner high-headroom curve.
+Clean Studio remains the factory default for every new plug-in instance; saved
+DAW instances continue restoring their chosen sound so existing sessions are
+not overwritten.
+
+Checkpoint v0.36 replaces Tape's delayed parallel blend with one calibrated
+series record/repro path. MIX now morphs the amount of tape behaviour instead
+of placing saturated audio beneath the raw guitar. DRIVE 0 is unity-clean;
+increasing Drive progressively lowers magnetic headroom, compresses peaks and
+adds level-dependent odd/even harmonics while inverse record-gain compensation
+holds nominal loudness. Studio and Cassette use clearly different calibration,
+bias, bandwidth and memory curves, and transport displacement occurs only when
+AGE is raised.
+
 ## macOS build
 
 From Terminal, open this folder and run:

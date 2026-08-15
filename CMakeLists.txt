@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Rockalizer VERSION 0.33.0 LANGUAGES C CXX)
+project(Rockalizer VERSION 0.36.0 LANGUAGES C CXX)
 
 include(FetchContent)
 

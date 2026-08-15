@@ -69,7 +69,7 @@ private:
     bool noiseGateOpen = true;
     std::atomic<bool> effectStateResetRequested { false };
     double currentSampleRate = 44100.0;
-    int currentPresetIndex = 0;
+    int currentPresetIndex = 1;
 
     juce::File getUserPresetDirectory() const;
     void loadFactoryPreset (int presetIndex);

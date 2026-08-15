@@ -1,6 +1,6 @@
 {
   "Name": "Rockalizer",
-  "Version": "0.33.0",
+  "Version": "0.36.0",
   "Factory Info": {
     "Vendor": "Nathan Aji",
     "URL": "",
@@ -17,7 +17,7 @@
       "Category": "Audio Module Class",
       "Name": "Rockalizer",
       "Vendor": "Nathan Aji",
-      "Version": "0.33.0",
+      "Version": "0.36.0",
       "SDKVersion": "VST 3.8.0",
       "Sub Categories": [
         "Fx",
@@ -32,7 +32,7 @@
       "Category": "Component Controller Class",
       "Name": "Rockalizer",
       "Vendor": "Nathan Aji",
-      "Version": "0.33.0",
+      "Version": "0.36.0",
       "SDKVersion": "VST 3.8.0",
       "Sub Categories": [
         "Fx",

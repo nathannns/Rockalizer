@@ -38,7 +38,10 @@ void EchoModule::setParameters (float timeMs, float repeats, float toneHz, float
     toneValue.setTargetValue (juce::jlimit (1200.0f, 14000.0f, toneHz));
     wobbleValue.setTargetValue (juce::jlimit (0.0f, 1.0f, wobble * 0.01f));
     driveValue.setTargetValue (juce::jlimit (0.0f, 1.0f, drive * 0.01f));
-    wetMix.setTargetValue (enabled ? juce::jlimit (0.0f, 1.0f, mix * 0.01f) : 0.0f);
+    // Give guitarists much finer control over the useful low end of the Mix
+    // knob. 10% now means subtle ambience, while the endpoint remains 100% wet.
+    const auto normalisedMix = juce::jlimit (0.0f, 1.0f, mix * 0.01f);
+    wetMix.setTargetValue (enabled ? std::pow (normalisedMix, 1.55f) : 0.0f);
     pattern = juce::jlimit (0, 4, patternIndex);
 }
 

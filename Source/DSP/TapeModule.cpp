@@ -56,20 +56,21 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
 
     const auto channels = juce::jmin (buffer.getNumChannels(), wowBuffer.getNumChannels());
     const auto cassetteMode = tapeType == cassette;
-    // COMP is deliberately the final stage of this module, after the tape
-    // blend and immediately before Chorus in the processor chain.
-    const auto thresholdDb = (cassetteMode ? -12.0f : -10.0f) - compValue * 12.0f;
-    const auto ratio = 1.0f + compValue * 4.5f;
-    const auto makeupDb = compValue * (cassetteMode ? 10.0f : 11.0f);
     constexpr float kneeDb = 8.0f;
-    const auto cutoffTop = cassetteMode ? 13500.0f : 20000.0f;
-    const auto cutoffBottom = cassetteMode ? 2500.0f : 5000.0f;
-    const auto cutoff = juce::jmap (toneValue, cutoffBottom, cutoffTop)
-                      * (1.0f - ageValue * (cassetteMode ? 0.68f : 0.42f));
-    const auto toneCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
-                                                   * cutoff / static_cast<float> (sampleRate));
+    // Cassette is a deliberately different medium, not merely the Studio
+    // curve with more Drive: narrower bandwidth and a stronger low-mid body
+    // remain audible even with AGE at zero.
+    const auto cutoffTop = cassetteMode ? 10500.0f : 20000.0f;
+    const auto cutoffBottom = cassetteMode ? 1900.0f : 5000.0f;
+    const auto colouredCutoff = juce::jmap (toneValue, cutoffBottom, cutoffTop)
+                              * (1.0f - ageValue * (cassetteMode ? 0.68f : 0.42f));
+    const auto transparentCutoff = juce::jmin (20000.0f, static_cast<float> (sampleRate * 0.45));
+    const auto transparentToneCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
+                                                              * transparentCutoff / static_cast<float> (sampleRate));
+    const auto colouredToneCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
+                                                           * colouredCutoff / static_cast<float> (sampleRate));
     const auto bassCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
-                                                   * (cassetteMode ? 130.0f : 85.0f)
+                                                   * (cassetteMode ? 155.0f : 85.0f)
                                                    / static_cast<float> (sampleRate));
     const auto midCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
                                                   * 1250.0f / static_cast<float> (sampleRate));
@@ -86,11 +87,26 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
     // Keep wow subtle. Large values mixed with the dry path create audible
     // comb-filter amplitude movement that can be mistaken for tremolo.
     const auto wowDepthMs = std::pow (ageValue, 0.78f) * (cassetteMode ? 1.15f : 0.28f);
-    const auto baseDelay = static_cast<float> (sampleRate) * 0.008f;
+    // A tape insert has one series signal path. The physical record-to-repro
+    // travel time is irrelevant to the timbre and must not be mixed against an
+    // undelayed copy; doing so created the detached "distortion underneath"
+    // sound. Only AGE introduces a very short transport displacement.
+    const auto baseDelay = static_cast<float> (sampleRate) * 0.00065f;
 
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
     {
-        const auto mix = wetMix.getNextValue();
+        const auto character = wetMix.getNextValue();
+        // Perceptual taper: useful tape colour arrives before the upper half
+        // of MIX, but zero still resolves to an exact clean path.
+        const auto characterAmount = std::pow (character, 0.55f);
+        const auto tapeAmount = characterAmount * driveValue;
+        const auto effectiveAge = tapeAmount * ageValue;
+        const auto effectiveComp = std::pow (character, 0.70f) * compValue;
+        const auto thresholdDb = (cassetteMode ? -12.0f : -10.0f) - effectiveComp * 12.0f;
+        const auto ratio = 1.0f + effectiveComp * 4.5f;
+        const auto makeupDb = effectiveComp * (cassetteMode ? 10.0f : 11.0f);
+        const auto toneCoefficient = juce::jmap (tapeAmount, transparentToneCoefficient,
+                                                  colouredToneCoefficient);
         for (int channel = 0; channel < channels; ++channel)
         {
             const auto dry = buffer.getSample (channel, sample);
@@ -98,30 +114,31 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
             wowBuffer.setSample (channel, writeIndex, dry);
             // Both channels share the same transport motion. A stereo phase
             // offset made mono guitars wander from left to right.
-            const auto wow = std::sin (lfoPhase) * wowDepthMs * 0.001f
+            const auto wow = std::sin (lfoPhase) * wowDepthMs * effectiveAge * 0.001f
                            * static_cast<float> (sampleRate);
-            auto x = readWow (channel, baseDelay + wow);
-            // Studio tape has more clean headroom than cassette, followed by a
-            // broad magnetic knee rather than a sudden distortion threshold.
-            // The extra 3 dB record level and stronger flux curve make Drive
-            // clearly audible without turning it into an ordinary gain knob.
-            const auto inputDb = driveValue * (cassetteMode ? 28.0f : 25.0f);
+            auto x = effectiveAge > 0.0001f ? readWow (channel, baseDelay + wow) : dry;
+
+            // Drive represents record flux above a unity-calibrated clean
+            // baseline. Increasing it lowers available headroom; inverse gain
+            // compensation keeps the nominal output stable like a calibrated
+            // recorder rather than behaving as an ordinary volume control.
+            const auto inputDb = tapeAmount * (cassetteMode ? 29.0f : 23.0f);
             const auto inputGain = juce::Decibels::decibelsToGain (inputDb);
             const auto driven = x * inputGain;
             const auto preSaturationBody = std::tanh (driven * 0.55f)
                                          * juce::Decibels::decibelsToGain (-inputDb);
-            const auto distortionAmount = std::pow (driveValue, 1.25f);
-            const auto bias = (cassetteMode ? 0.045f : 0.018f)
-                            + distortionAmount * (cassetteMode ? 0.050f : 0.028f);
-            const auto shape = 1.0f + distortionAmount * (cassetteMode ? 2.85f : 2.48f)
-                                     + ageValue * (cassetteMode ? 0.45f : 0.24f);
+            const auto distortionAmount = std::pow (tapeAmount, 1.12f);
+            const auto bias = distortionAmount * (cassetteMode ? 0.105f : 0.032f);
+            const auto shape = 1.0f + distortionAmount * (cassetteMode ? 3.65f : 2.60f)
+                                     + effectiveAge * (cassetteMode ? 0.45f : 0.24f);
             const auto biasTanh = std::tanh (bias);
             const auto smallSignalSlope = shape * (1.0f - biasTanh * biasTanh);
             const auto anhysteretic = (std::tanh (driven * shape + bias) - biasTanh)
                                     / juce::jmax (0.1f, smallSignalSlope);
             auto& magnetisation = magnetisationState[static_cast<size_t> (channel)];
             magnetisation += magnetisationCoefficient * (anhysteretic - magnetisation);
-            const auto memoryMix = (cassetteMode ? 0.16f : 0.115f) + ageValue * 0.08f;
+            const auto memoryMix = distortionAmount * (cassetteMode ? 0.25f : 0.12f)
+                                 + effectiveAge * 0.08f;
             x = anhysteretic * (1.0f - memoryMix) + magnetisation * memoryMix;
             // Cancel the record gain for small signals. Drive therefore lowers
             // headroom instead of acting like a volume knob; only peaks that
@@ -138,16 +155,19 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
             // head-bump and increasingly worn, softened character.
             const auto brightBody = juce::jlimit (0.0f, 1.0f, (toneValue - 0.52f) / 0.48f);
             const auto driveBody = distortionAmount;
-            const auto midBody = brightBody * (cassetteMode ? 0.14f : 0.11f)
-                               + driveBody * (cassetteMode ? 0.10f : 0.13f);
-            const auto ageBump = ageValue * (cassetteMode ? 0.14f : 0.10f);
+            const auto midBody = tapeAmount * (cassetteMode ? 0.085f : 0.0f)
+                               + brightBody * (cassetteMode ? 0.16f : 0.11f)
+                               + driveBody * (cassetteMode ? 0.13f : 0.13f);
+            const auto ageBump = effectiveAge * (cassetteMode ? 0.14f : 0.10f);
             const auto driveBass = driveBody * (cassetteMode ? 0.16f : 0.20f);
             x = lp + mids * midBody
-                   + bass * ((cassetteMode ? 0.035f : 0.085f) + ageBump + driveBass);
-            // Tape Mix first, then the one-knob compressor. Its detector is
-            // high-pass weighted so low fundamentals do not collapse; a small
-            // parallel low-band feed restores guitar body and pick "thump".
-            auto compressed = dry * (1.0f - mix) + x * mix;
+                   + bass * (tapeAmount * (cassetteMode ? 0.075f : 0.085f)
+                           + ageBump + driveBass);
+
+            // There is no dry/wet summation here. MIX morphs the strength of
+            // this single calibrated tape path, so its harmonics belong to the
+            // note instead of sounding like a second distorted track.
+            auto compressed = tapeAmount <= 0.000001f ? dry : x;
             auto& detectorLow = detectorLowState[static_cast<size_t> (channel)];
             detectorLow += detectorLowCoefficient * (compressed - detectorLow);
             const auto detectorSample = compressed - detectorLow * 0.76f;
@@ -169,8 +189,8 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
             const auto makeupActivity = juce::jlimit (0.0f, 1.0f,
                                                        (envelopeDb + 72.0f) / 30.0f);
             compressed *= juce::Decibels::decibelsToGain (
-                makeupDb * makeupActivity - reductionDb + compValue * makeupActivity * 2.0f);
-            compressed += detectorLow * compValue * 0.16f;
+                makeupDb * makeupActivity - reductionDb + effectiveComp * makeupActivity * 2.0f);
+            compressed += detectorLow * effectiveComp * 0.16f;
             buffer.setSample (channel, sample, compressed);
         }
         writeIndex = (writeIndex + 1) % wowBuffer.getNumSamples();

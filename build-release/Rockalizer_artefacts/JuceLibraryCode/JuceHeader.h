@@ -42,7 +42,7 @@ namespace ProjectInfo
 {
     const char* const  projectName    = "Rockalizer";
     const char* const  companyName    = "Nathan Aji";
-    const char* const  versionString  = "0.33.0";
-    const int          versionNumber  =  0x2100;
+    const char* const  versionString  = "0.36.0";
+    const int          versionNumber  =  0x2400;
 }
 #endif
