@@ -13,6 +13,16 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(JUCE)
 
+juce_add_binary_data(RockalizerData SOURCES
+    Resources/ImpulseResponses/spring_gbsr.wav
+    Resources/ImpulseResponses/spring_deluxe.wav
+    Resources/ImpulseResponses/spring_space.wav
+    Resources/ImpulseResponses/spring_9100.wav
+    Resources/ImpulseResponses/spring_echomixer.wav
+    Resources/ImpulseResponses/spring_schaller.wav
+    Resources/ImpulseResponses/spring_pioneer.wav
+)
+
 juce_add_plugin(Rockalizer
     COMPANY_NAME "Nathan Aji"
     BUNDLE_ID "com.nathanaji.rockalizer"
@@ -42,6 +52,8 @@ target_sources(Rockalizer
         Source/DSP/EchoModule.h
         Source/DSP/TapeModule.cpp
         Source/DSP/TapeModule.h
+        Source/DSP/SpringModule.cpp
+        Source/DSP/SpringModule.h
 )
 
 target_compile_features(Rockalizer PRIVATE cxx_std_17)
@@ -57,6 +69,7 @@ target_link_libraries(Rockalizer
     PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
+        RockalizerData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

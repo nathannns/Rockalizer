@@ -103,6 +103,27 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     addAndMakeVisible (tapeOnButton);
     tapeOnAttachment = std::make_unique<ButtonAttachment> (processor.parameters, "tapeOn", tapeOnButton);
 
+    configureKnob (springDecaySlider, springDecayLabel, "DECAY", " %");
+    configureKnob (springDwellSlider, springDwellLabel, "DWELL", " %");
+    configureKnob (springToneSlider, springToneLabel, "TONE", " %");
+    configureKnob (springDripSlider, springDripLabel, "DRIP", " %");
+    configureKnob (springMixSlider, springMixLabel, "MIX", " %");
+    springDecayAttachment = std::make_unique<SliderAttachment> (processor.parameters, "springDecay", springDecaySlider);
+    springDwellAttachment = std::make_unique<SliderAttachment> (processor.parameters, "springDwell", springDwellSlider);
+    springToneAttachment = std::make_unique<SliderAttachment> (processor.parameters, "springTone", springToneSlider);
+    springDripAttachment = std::make_unique<SliderAttachment> (processor.parameters, "springDrip", springDripSlider);
+    springMixAttachment = std::make_unique<SliderAttachment> (processor.parameters, "springMix", springMixSlider);
+    springTypeBox.addItemList ({ "GBSR", "DELUXE", "SPACE", "9100", "ECHOMIXER", "SCHALLER", "PIONEER" }, 1);
+    springTypeBox.setColour (juce::ComboBox::backgroundColourId, panel);
+    springTypeBox.setColour (juce::ComboBox::textColourId, primaryText);
+    springTypeBox.setColour (juce::ComboBox::outlineColourId, panelBorder);
+    addAndMakeVisible (springTypeBox);
+    springTypeAttachment = std::make_unique<ComboBoxAttachment> (processor.parameters, "springType", springTypeBox);
+    springOnButton.setColour (juce::ToggleButton::textColourId, primaryText);
+    springOnButton.setColour (juce::ToggleButton::tickColourId, accent);
+    addAndMakeVisible (springOnButton);
+    springOnAttachment = std::make_unique<ButtonAttachment> (processor.parameters, "springOn", springOnButton);
+
     setResizable (true, true);
     setResizeLimits (900, 500, 1800, 990);
     getConstrainer()->setFixedAspectRatio (static_cast<double> (referenceWidth) / referenceHeight);
@@ -196,7 +217,8 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
                               card.getX() + 14.0f,
                               card.getRight() - 14.0f);
 
-        if (moduleNames[index] != "TAPE" && moduleNames[index] != "CHORUS" && moduleNames[index] != "ECHO")
+        if (moduleNames[index] != "TAPE" && moduleNames[index] != "CHORUS"
+            && moduleNames[index] != "ECHO" && moduleNames[index] != "SPRING")
         {
             g.setColour (secondaryText);
             g.setFont (juce::FontOptions (14.0f));
@@ -310,4 +332,23 @@ void RockalizerAudioProcessorEditor::resized()
     placeTape (tapeMixSlider, tapeMixLabel, tapeCardX + 91, 418, 100);
     tapeOnButton.setBounds (juce::roundToInt ((tapeCardX + 208) * scaleX), juce::roundToInt (111 * scaleY),
                             juce::roundToInt (58 * scaleX), juce::roundToInt (26 * scaleY));
+
+    const auto springCardX = 898;
+    springTypeBox.setBounds (juce::roundToInt ((springCardX + 62) * scaleX), juce::roundToInt (145 * scaleY),
+                             juce::roundToInt (152 * scaleX), juce::roundToInt (28 * scaleY));
+    const auto placeSpring = [scaleX, scaleY] (juce::Slider& slider, juce::Label& label,
+                                               int x, int y, int size = 90)
+    {
+        label.setBounds (juce::roundToInt (x * scaleX), juce::roundToInt (y * scaleY),
+                         juce::roundToInt (size * scaleX), juce::roundToInt (18 * scaleY));
+        slider.setBounds (juce::roundToInt (x * scaleX), juce::roundToInt ((y + 18) * scaleY),
+                          juce::roundToInt (size * scaleX), juce::roundToInt (80 * scaleY));
+    };
+    placeSpring (springDecaySlider, springDecayLabel, springCardX + 24, 188);
+    placeSpring (springDwellSlider, springDwellLabel, springCardX + 158, 188);
+    placeSpring (springToneSlider, springToneLabel, springCardX + 24, 310);
+    placeSpring (springDripSlider, springDripLabel, springCardX + 158, 310);
+    placeSpring (springMixSlider, springMixLabel, springCardX + 91, 418, 100);
+    springOnButton.setBounds (juce::roundToInt ((springCardX + 208) * scaleX), juce::roundToInt (111 * scaleY),
+                              juce::roundToInt (58 * scaleX), juce::roundToInt (26 * scaleY));
 }

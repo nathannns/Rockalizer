@@ -89,6 +89,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::cr
             juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, juce::String (item.first) == "tapeTone" ? 60.0f : 25.0f,
             juce::AudioParameterFloatAttributes().withLabel ("%")));
 
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "springOn", 1 }, "Spring On", true));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "springType", 1 }, "Spring Type",
+        juce::StringArray { "GBSR", "Deluxe", "Space", "9100", "Echomixer", "Schaller", "Pioneer" }, 0));
+    for (auto item : { std::pair { "springDecay", "Spring Decay" }, std::pair { "springDwell", "Spring Dwell" },
+                       std::pair { "springTone", "Spring Tone" }, std::pair { "springDrip", "Spring Drip" },
+                       std::pair { "springMix", "Spring Mix" } })
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { item.first, 1 }, item.second,
+            juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, juce::String (item.first) == "springTone" ? 60.0f : 25.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("%")));
+
     return layout;
 }
 
@@ -108,6 +118,7 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     chorusModule.prepare (spec);
     echoModule.prepare (spec);
     tapeModule.prepare (spec);
+    springModule.prepare (spec);
 
     inputGain.setRampDurationSeconds (0.02);
     outputGain.setRampDurationSeconds (0.02);
@@ -121,6 +132,7 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     chorusModule.reset();
     echoModule.reset();
     tapeModule.reset();
+    springModule.reset();
 }
 
 void RockalizerAudioProcessor::releaseResources()
@@ -195,6 +207,13 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         parameters.getRawParameterValue ("echoMix")->load(), parameters.getRawParameterValue ("echoOn")->load() > 0.5f,
         static_cast<int> (parameters.getRawParameterValue ("echoPattern")->load()));
     echoModule.process (buffer);
+
+    springModule.setParameters (parameters.getRawParameterValue ("springDecay")->load(),
+        parameters.getRawParameterValue ("springDwell")->load(), parameters.getRawParameterValue ("springTone")->load(),
+        parameters.getRawParameterValue ("springDrip")->load(), parameters.getRawParameterValue ("springMix")->load(),
+        parameters.getRawParameterValue ("springOn")->load() > 0.5f,
+        static_cast<int> (parameters.getRawParameterValue ("springType")->load()));
+    springModule.process (buffer);
 
     // Tape and Spring will be inserted around these modules later.
 

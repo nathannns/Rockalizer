@@ -14,7 +14,9 @@ Tone, Mix and smoothly blended bypass.
 Checkpoint v0.4 adds the complete tape Echo: Straight, Bounce, Gallop, Cluster
 and Wash patterns, free time, host-tempo sync, repeats, tone, wobble, drive and mix.
 Checkpoint v0.5 adds dual Tape modes: polished Studio reel-to-reel character
-and compressed, unstable Cassette/Portastudio-style character. Spring remains.
+and compressed, unstable Cassette/Portastudio-style character.
+Checkpoint v0.6 embeds seven supplied spring IRs and adds Spring Type, Decay,
+Dwell, Tone, Drip, Mix and smooth bypass.
 
 ## macOS build
 

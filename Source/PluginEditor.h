@@ -50,6 +50,10 @@ private:
     juce::Label tapeDriveLabel, tapeCompLabel, tapeToneLabel, tapeAgeLabel, tapeMixLabel;
     juce::ComboBox tapeTypeBox;
     juce::ToggleButton tapeOnButton { "ON" };
+    juce::Slider springDecaySlider, springDwellSlider, springToneSlider, springDripSlider, springMixSlider;
+    juce::Label springDecayLabel, springDwellLabel, springToneLabel, springDripLabel, springMixLabel;
+    juce::ComboBox springTypeBox;
+    juce::ToggleButton springOnButton { "ON" };
 
     std::unique_ptr<SliderAttachment> inputAttachment;
     std::unique_ptr<SliderAttachment> lowCutAttachment;
@@ -69,6 +73,10 @@ private:
     std::unique_ptr<SliderAttachment> tapeAgeAttachment, tapeMixAttachment;
     std::unique_ptr<ComboBoxAttachment> tapeTypeAttachment;
     std::unique_ptr<ButtonAttachment> tapeOnAttachment;
+    std::unique_ptr<SliderAttachment> springDecayAttachment, springDwellAttachment, springToneAttachment;
+    std::unique_ptr<SliderAttachment> springDripAttachment, springMixAttachment;
+    std::unique_ptr<ComboBoxAttachment> springTypeAttachment;
+    std::unique_ptr<ButtonAttachment> springOnAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RockalizerAudioProcessorEditor)
 };
