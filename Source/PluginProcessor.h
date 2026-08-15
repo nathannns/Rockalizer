@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "DSP/ChorusModule.h"
 
 class RockalizerAudioProcessor final : public juce::AudioProcessor
 {
@@ -40,6 +41,7 @@ private:
     juce::dsp::Gain<float> outputGain;
     juce::dsp::StateVariableTPTFilter<float> lowCutFilter;
     juce::dsp::StateVariableTPTFilter<float> highCutFilter;
+    ChorusModule chorusModule;
     double currentSampleRate = 44100.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RockalizerAudioProcessor)

@@ -9,7 +9,8 @@ It builds:
 - Standalone application
 
 Checkpoint v0.2 adds working Input, Low Cut, Hi Cut and Output processing.
-The four effect modules remain placeholders and are added in later checkpoints.
+Checkpoint v0.3 adds the first working Chorus module with Rate, Depth, Width,
+Tone, Mix and smoothly blended bypass. Tape, Echo and Spring remain placeholders.
 
 ## macOS build
 

@@ -14,8 +14,12 @@ public:
 
 private:
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
+    using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 
-    void configureKnob (juce::Slider& slider, const juce::String& suffix);
+    void configureKnob (juce::Slider& slider,
+                        juce::Label& label,
+                        const juce::String& name,
+                        const juce::String& suffix);
 
     RockalizerAudioProcessor& processor;
 
@@ -23,11 +27,29 @@ private:
     juce::Slider lowCutSlider;
     juce::Slider highCutSlider;
     juce::Slider outputSlider;
+    juce::Slider chorusRateSlider;
+    juce::Slider chorusDepthSlider;
+    juce::Slider chorusWidthSlider;
+    juce::Slider chorusToneSlider;
+    juce::Slider chorusMixSlider;
+
+    juce::Label chorusRateLabel;
+    juce::Label chorusDepthLabel;
+    juce::Label chorusWidthLabel;
+    juce::Label chorusToneLabel;
+    juce::Label chorusMixLabel;
+    juce::ToggleButton chorusBypassButton { "ON" };
 
     std::unique_ptr<SliderAttachment> inputAttachment;
     std::unique_ptr<SliderAttachment> lowCutAttachment;
     std::unique_ptr<SliderAttachment> highCutAttachment;
     std::unique_ptr<SliderAttachment> outputAttachment;
+    std::unique_ptr<SliderAttachment> chorusRateAttachment;
+    std::unique_ptr<SliderAttachment> chorusDepthAttachment;
+    std::unique_ptr<SliderAttachment> chorusWidthAttachment;
+    std::unique_ptr<SliderAttachment> chorusToneAttachment;
+    std::unique_ptr<SliderAttachment> chorusMixAttachment;
+    std::unique_ptr<ButtonAttachment> chorusBypassAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RockalizerAudioProcessorEditor)
 };

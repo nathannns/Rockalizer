@@ -33,6 +33,34 @@ juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::cr
         juce::NormalisableRange<float> { -24.0f, 12.0f, 0.1f }, 0.0f,
         juce::AudioParameterFloatAttributes().withLabel ("dB")));
 
+    layout.add (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "chorusOn", 1 }, "Chorus On", true));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "chorusRate", 1 }, "Chorus Rate",
+        juce::NormalisableRange<float> { 0.05f, 5.0f, 0.01f, 0.35f }, 0.6f,
+        juce::AudioParameterFloatAttributes().withLabel ("Hz")));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "chorusDepth", 1 }, "Chorus Depth",
+        juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, 35.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "chorusWidth", 1 }, "Chorus Width",
+        juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, 60.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "chorusTone", 1 }, "Chorus Tone",
+        juce::NormalisableRange<float> { 1000.0f, 16000.0f, 1.0f, 0.35f }, 8000.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("Hz")));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "chorusMix", 1 }, "Chorus Mix",
+        juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, 25.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
+
     return layout;
 }
 
@@ -49,6 +77,7 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     outputGain.prepare (spec);
     lowCutFilter.prepare (spec);
     highCutFilter.prepare (spec);
+    chorusModule.prepare (spec);
 
     inputGain.setRampDurationSeconds (0.02);
     outputGain.setRampDurationSeconds (0.02);
@@ -59,6 +88,7 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     outputGain.reset();
     lowCutFilter.reset();
     highCutFilter.reset();
+    chorusModule.reset();
 }
 
 void RockalizerAudioProcessor::releaseResources()
@@ -100,7 +130,16 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     inputGain.process (context);
     lowCutFilter.process (context);
 
-    // Tape, Chorus, Echo and Spring will be inserted here.
+    chorusModule.setParameters (
+        parameters.getRawParameterValue ("chorusRate")->load(),
+        parameters.getRawParameterValue ("chorusDepth")->load(),
+        parameters.getRawParameterValue ("chorusWidth")->load(),
+        parameters.getRawParameterValue ("chorusTone")->load(),
+        parameters.getRawParameterValue ("chorusMix")->load(),
+        parameters.getRawParameterValue ("chorusOn")->load() > 0.5f);
+    chorusModule.process (buffer);
+
+    // Tape, Echo and Spring will be inserted around this module later.
 
     highCutFilter.process (context);
     outputGain.process (context);

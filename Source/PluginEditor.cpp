@@ -16,15 +16,38 @@ const juce::Colour accent { 0xffff7a33 };
 RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
-    configureKnob (inputSlider, " dB");
-    configureKnob (lowCutSlider, " Hz");
-    configureKnob (highCutSlider, " Hz");
-    configureKnob (outputSlider, " dB");
+    juce::Label unusedInputLabel;
+    juce::Label unusedLowCutLabel;
+    juce::Label unusedHighCutLabel;
+    juce::Label unusedOutputLabel;
+    configureKnob (inputSlider, unusedInputLabel, {}, " dB");
+    configureKnob (lowCutSlider, unusedLowCutLabel, {}, " Hz");
+    configureKnob (highCutSlider, unusedHighCutLabel, {}, " Hz");
+    configureKnob (outputSlider, unusedOutputLabel, {}, " dB");
+
+    configureKnob (chorusRateSlider, chorusRateLabel, "RATE", " Hz");
+    configureKnob (chorusDepthSlider, chorusDepthLabel, "DEPTH", " %");
+    configureKnob (chorusWidthSlider, chorusWidthLabel, "WIDTH", " %");
+    configureKnob (chorusToneSlider, chorusToneLabel, "TONE", " Hz");
+    configureKnob (chorusMixSlider, chorusMixLabel, "MIX", " %");
 
     inputAttachment = std::make_unique<SliderAttachment> (processor.parameters, "inputGain", inputSlider);
     lowCutAttachment = std::make_unique<SliderAttachment> (processor.parameters, "lowCut", lowCutSlider);
     highCutAttachment = std::make_unique<SliderAttachment> (processor.parameters, "highCut", highCutSlider);
     outputAttachment = std::make_unique<SliderAttachment> (processor.parameters, "outputGain", outputSlider);
+    chorusRateAttachment = std::make_unique<SliderAttachment> (processor.parameters, "chorusRate", chorusRateSlider);
+    chorusDepthAttachment = std::make_unique<SliderAttachment> (processor.parameters, "chorusDepth", chorusDepthSlider);
+    chorusWidthAttachment = std::make_unique<SliderAttachment> (processor.parameters, "chorusWidth", chorusWidthSlider);
+    chorusToneAttachment = std::make_unique<SliderAttachment> (processor.parameters, "chorusTone", chorusToneSlider);
+    chorusMixAttachment = std::make_unique<SliderAttachment> (processor.parameters, "chorusMix", chorusMixSlider);
+
+    chorusBypassButton.setColour (juce::ToggleButton::textColourId, primaryText);
+    chorusBypassButton.setColour (juce::ToggleButton::tickColourId, accent);
+    chorusBypassButton.setColour (juce::ToggleButton::tickDisabledColourId, secondaryText);
+    addAndMakeVisible (chorusBypassButton);
+    chorusBypassAttachment = std::make_unique<ButtonAttachment> (processor.parameters,
+                                                                 "chorusOn",
+                                                                 chorusBypassButton);
 
     setResizable (true, true);
     setResizeLimits (900, 500, 1800, 990);
@@ -33,6 +56,8 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
 }
 
 void RockalizerAudioProcessorEditor::configureKnob (juce::Slider& slider,
+                                                     juce::Label& label,
+                                                     const juce::String& name,
                                                      const juce::String& suffix)
 {
     slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
@@ -45,6 +70,15 @@ void RockalizerAudioProcessorEditor::configureKnob (juce::Slider& slider,
     slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
     slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     addAndMakeVisible (slider);
+
+    if (name.isNotEmpty())
+    {
+        label.setText (name, juce::dontSendNotification);
+        label.setJustificationType (juce::Justification::centred);
+        label.setColour (juce::Label::textColourId, primaryText);
+        label.setFont (juce::FontOptions (13.0f, juce::Font::bold));
+        addAndMakeVisible (label);
+    }
 }
 
 void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
@@ -108,9 +142,12 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
                               card.getX() + 14.0f,
                               card.getRight() - 14.0f);
 
-        g.setColour (secondaryText);
-        g.setFont (juce::FontOptions (14.0f));
-        g.drawText ("DSP MODULE COMING NEXT", card, juce::Justification::centred);
+        if (moduleNames[index] != "CHORUS")
+        {
+            g.setColour (secondaryText);
+            g.setFont (juce::FontOptions (14.0f));
+            g.drawText ("DSP MODULE COMING NEXT", card, juce::Justification::centred);
+        }
     }
 
     auto footer = juce::Rectangle<float> (left, height - 108.0f, width - left * 2.0f, 80.0f);
@@ -148,4 +185,32 @@ void RockalizerAudioProcessorEditor::resized()
     place (lowCutSlider, 458, 570);
     place (highCutSlider, 632, 570);
     place (outputSlider, 1048, 570);
+
+    const auto chorusCardX = 318;
+    const auto placeChorus = [scaleX, scaleY] (juce::Slider& slider,
+                                               juce::Label& label,
+                                               int x,
+                                               int y,
+                                               int size = 90)
+    {
+        label.setBounds (juce::roundToInt (x * scaleX),
+                         juce::roundToInt (y * scaleY),
+                         juce::roundToInt (size * scaleX),
+                         juce::roundToInt (18 * scaleY));
+        slider.setBounds (juce::roundToInt (x * scaleX),
+                          juce::roundToInt ((y + 18) * scaleY),
+                          juce::roundToInt (size * scaleX),
+                          juce::roundToInt (82 * scaleY));
+    };
+
+    placeChorus (chorusRateSlider, chorusRateLabel, chorusCardX + 24, 176);
+    placeChorus (chorusDepthSlider, chorusDepthLabel, chorusCardX + 158, 176);
+    placeChorus (chorusWidthSlider, chorusWidthLabel, chorusCardX + 24, 302);
+    placeChorus (chorusToneSlider, chorusToneLabel, chorusCardX + 158, 302);
+    placeChorus (chorusMixSlider, chorusMixLabel, chorusCardX + 91, 414, 100);
+
+    chorusBypassButton.setBounds (juce::roundToInt ((chorusCardX + 205) * scaleX),
+                                  juce::roundToInt (111 * scaleY),
+                                  juce::roundToInt (60 * scaleX),
+                                  juce::roundToInt (26 * scaleY));
 }
