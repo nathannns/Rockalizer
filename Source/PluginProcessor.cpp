@@ -289,6 +289,15 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
          ++channel)
         buffer.clear (channel, 0, buffer.getNumSamples());
 
+    // Reject invalid host/input samples before they can enter feedback paths.
+    for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+        {
+            const auto value = buffer.getSample (channel, sample);
+            if (! std::isfinite (value))
+                buffer.setSample (channel, sample, 0.0f);
+        }
+
     jassert (buffer.getNumSamples() <= globalDryBuffer.getNumSamples());
     const auto channels = juce::jmin (buffer.getNumChannels(), globalDryBuffer.getNumChannels());
     for (int channel = 0; channel < channels; ++channel)
@@ -358,6 +367,17 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     highCutFilter.process (context);
     outputGain.process (context);
+
+    // Last-resort safety rail: invalid samples become silence and runaway
+    // values are bounded well above normal audio level without changing the
+    // sound during ordinary operation.
+    for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+        {
+            const auto value = buffer.getSample (channel, sample);
+            buffer.setSample (channel, sample,
+                std::isfinite (value) ? juce::jlimit (-8.0f, 8.0f, value) : 0.0f);
+        }
 
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
     {

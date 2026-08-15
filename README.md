@@ -23,6 +23,9 @@ Checkpoint v0.7.1 makes the header POWER control explicitly host-automatable
 and guarantees that it remains the topmost clickable UI component.
 Checkpoint v0.8 adds eight complete factory presets, previous/next navigation,
 an editable preset-name field, and persistent user preset saving/loading.
+Checkpoint v0.9 smooths echo feedback, tone, wobble and drive changes, lowers
+the maximum feedback margin, removes known conversion warnings, and adds NaN,
+infinity and runaway-level protection around the complete processing chain.
 
 ## macOS build
 

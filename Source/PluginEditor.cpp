@@ -272,7 +272,7 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
 
     for (int index = 0; index < moduleNames.size(); ++index)
     {
-        auto card = juce::Rectangle<float> (left + index * (cardWidth + gap),
+        auto card = juce::Rectangle<float> (left + static_cast<float> (index) * (cardWidth + gap),
                                              cardsTop,
                                              cardWidth,
                                              cardsBottom - cardsTop);

@@ -15,19 +15,19 @@ public:
 
 private:
     float readDelay (int channel, float delaySamples) const;
-    float processFeedbackTone (int channel, float sample);
+    float processFeedbackTone (int channel, float sample, float cutoffHz);
     void getPattern (float* ratios, float* gains, int& taps) const;
 
     juce::AudioBuffer<float> delayBuffer;
     juce::SmoothedValue<float> delaySamples;
     juce::SmoothedValue<float> wetMix;
+    juce::SmoothedValue<float> feedbackValue;
+    juce::SmoothedValue<float> toneValue;
+    juce::SmoothedValue<float> wobbleValue;
+    juce::SmoothedValue<float> driveValue;
     std::vector<float> toneState;
     double sampleRate = 44100.0;
     int writeIndex = 0;
     int pattern = straight;
-    float feedback = 0.35f;
-    float toneCutoff = 7000.0f;
-    float wobbleDepth = 0.0f;
-    float driveAmount = 0.0f;
     float lfoPhase = 0.0f;
 };
