@@ -16,9 +16,35 @@ const juce::Colour accent { 0xffff7a33 };
 RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
+    configureKnob (inputSlider, " dB");
+    configureKnob (lowCutSlider, " Hz");
+    configureKnob (highCutSlider, " Hz");
+    configureKnob (outputSlider, " dB");
+
+    inputAttachment = std::make_unique<SliderAttachment> (processor.parameters, "inputGain", inputSlider);
+    lowCutAttachment = std::make_unique<SliderAttachment> (processor.parameters, "lowCut", lowCutSlider);
+    highCutAttachment = std::make_unique<SliderAttachment> (processor.parameters, "highCut", highCutSlider);
+    outputAttachment = std::make_unique<SliderAttachment> (processor.parameters, "outputGain", outputSlider);
+
     setResizable (true, true);
     setResizeLimits (900, 500, 1800, 990);
+    getConstrainer()->setFixedAspectRatio (static_cast<double> (referenceWidth) / referenceHeight);
     setSize (referenceWidth, referenceHeight);
+}
+
+void RockalizerAudioProcessorEditor::configureKnob (juce::Slider& slider,
+                                                     const juce::String& suffix)
+{
+    slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+    slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 84, 18);
+    slider.setTextValueSuffix (suffix);
+    slider.setColour (juce::Slider::rotarySliderFillColourId, accent);
+    slider.setColour (juce::Slider::rotarySliderOutlineColourId, panelBorder);
+    slider.setColour (juce::Slider::thumbColourId, primaryText);
+    slider.setColour (juce::Slider::textBoxTextColourId, primaryText);
+    slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+    slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    addAndMakeVisible (slider);
 }
 
 void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
@@ -95,14 +121,31 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (primaryText);
     g.setFont (juce::FontOptions (14.0f, juce::Font::bold));
-    g.drawText ("INPUT", footer.withWidth (160.0f), juce::Justification::centred);
-    g.drawText ("LOW CUT", footer.withSizeKeepingCentre (130.0f, footer.getHeight()).translated (-75.0f, 0.0f),
+    const auto labelY = static_cast<int> (height - 102.0f);
+    g.drawText ("INPUT", 42, labelY, 110, 20, juce::Justification::centred);
+    g.drawText ("LOW CUT", static_cast<int> (width * 0.5f - 142.0f), labelY, 110, 20,
                 juce::Justification::centred);
-    g.drawText ("HI CUT", footer.withSizeKeepingCentre (130.0f, footer.getHeight()).translated (75.0f, 0.0f),
+    g.drawText ("HI CUT", static_cast<int> (width * 0.5f + 32.0f), labelY, 110, 20,
                 juce::Justification::centred);
-    g.drawText ("OUTPUT", footer.removeFromRight (160.0f), juce::Justification::centred);
+    g.drawText ("OUTPUT", static_cast<int> (width - 152.0f), labelY, 110, 20,
+                juce::Justification::centred);
 }
 
 void RockalizerAudioProcessorEditor::resized()
 {
+    const auto scaleX = getWidth() / static_cast<float> (referenceWidth);
+    const auto scaleY = getHeight() / static_cast<float> (referenceHeight);
+
+    const auto place = [scaleX, scaleY] (juce::Slider& slider, int x, int y)
+    {
+        slider.setBounds (juce::roundToInt (x * scaleX),
+                          juce::roundToInt (y * scaleY),
+                          juce::roundToInt (110 * scaleX),
+                          juce::roundToInt (78 * scaleY));
+    };
+
+    place (inputSlider, 42, 570);
+    place (lowCutSlider, 458, 570);
+    place (highCutSlider, 632, 570);
+    place (outputSlider, 1048, 570);
 }

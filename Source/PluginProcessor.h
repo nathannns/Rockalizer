@@ -31,6 +31,16 @@ public:
     void getStateInformation (juce::MemoryBlock&) override;
     void setStateInformation (const void*, int) override;
 
+    juce::AudioProcessorValueTreeState parameters;
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
 private:
+    juce::dsp::Gain<float> inputGain;
+    juce::dsp::Gain<float> outputGain;
+    juce::dsp::StateVariableTPTFilter<float> lowCutFilter;
+    juce::dsp::StateVariableTPTFilter<float> highCutFilter;
+    double currentSampleRate = 44100.0;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RockalizerAudioProcessor)
 };

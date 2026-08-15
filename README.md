@@ -8,9 +8,8 @@ It builds:
 - VST3
 - Standalone application
 
-The audio path is intentionally transparent. The interface is a functional
-placeholder matching the agreed four-module structure. DSP and interactive
-controls are added in later checkpoints.
+Checkpoint v0.2 adds working Input, Low Cut, Hi Cut and Output processing.
+The four effect modules remain placeholders and are added in later checkpoints.
 
 ## macOS build
 
