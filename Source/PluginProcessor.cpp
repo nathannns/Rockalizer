@@ -100,30 +100,30 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             set ("tapeType", 0.0f); set ("tapeDrive", 12.0f); set ("tapeComp", 20.0f);
             set ("tapeMix", 35.0f); set ("chorusRate", 0.30f); set ("chorusDepth", 30.0f);
             set ("chorusWidth", 76.0f); set ("chorusMix", 12.0f); set ("echoMix", 8.0f);
-            set ("springDecay", 26.0f); set ("springMix", 8.0f); break;
+            set ("springDecay", 30.0f); set ("springMix", 12.0f); break;
         case 1: // Warm Cassette
             set ("tapeType", 1.0f); set ("tapeDrive", 34.0f); set ("tapeComp", 48.0f);
             set ("tapeTone", 42.0f); set ("tapeAge", 45.0f); set ("tapeMix", 62.0f);
             set ("chorusRate", 0.24f); set ("chorusDepth", 34.0f); set ("chorusWidth", 78.0f);
-            set ("chorusMix", 14.0f); set ("echoMix", 7.0f); set ("springMix", 7.0f); break;
+            set ("chorusMix", 14.0f); set ("echoMix", 7.0f); set ("springMix", 12.0f); break;
         case 2: // Wide Indie
             set ("tapeDrive", 17.0f); set ("tapeMix", 38.0f); set ("chorusRate", 0.38f);
             set ("chorusDepth", 58.0f); set ("chorusWidth", 94.0f); set ("chorusMix", 40.0f);
             set ("echoTime", 420.0f); set ("echoRepeats", 20.0f); set ("echoMix", 12.0f);
-            set ("springType", 1.0f); set ("springMix", 15.0f); break;
+            set ("springType", 0.0f); set ("springDecay", 42.0f); set ("springMix", 24.0f); break;
         case 3: // Space Echo
             set ("tapeDrive", 22.0f); set ("chorusRate", 0.22f); set ("chorusDepth", 26.0f);
             set ("chorusWidth", 74.0f); set ("chorusMix", 10.0f);
             set ("echoPattern", 3.0f); set ("echoTime", 465.0f);
             set ("echoRepeats", 36.0f); set ("echoTone", 4800.0f); set ("echoWobble", 38.0f);
-            set ("echoDrive", 18.0f); set ("echoMix", 24.0f); set ("springType", 2.0f);
-            set ("springDecay", 44.0f); set ("springMix", 18.0f); break;
+            set ("echoDrive", 18.0f); set ("echoMix", 24.0f); set ("springType", 0.0f);
+            set ("springDecay", 50.0f); set ("springMix", 30.0f); break;
         case 4: // Vintage Spring
             set ("tapeType", 1.0f); set ("tapeDrive", 21.0f); set ("tapeMix", 42.0f);
             set ("chorusRate", 0.20f); set ("chorusDepth", 24.0f); set ("chorusWidth", 70.0f);
-            set ("chorusMix", 9.0f); set ("echoMix", 12.0f); set ("springType", 1.0f);
-            set ("springDecay", 55.0f); set ("springDwell", 52.0f); set ("springTone", 58.0f);
-            set ("springDrip", 54.0f); set ("springMix", 34.0f); break;
+            set ("chorusMix", 9.0f); set ("echoMix", 12.0f); set ("springType", 0.0f);
+            set ("springDecay", 64.0f); set ("springDwell", 44.0f); set ("springTone", 54.0f);
+            set ("springDrip", 42.0f); set ("springMix", 48.0f); break;
         case 5: // Lo-Fi Dream
             set ("tapeType", 1.0f); set ("tapeDrive", 42.0f); set ("tapeComp", 56.0f);
             set ("tapeTone", 32.0f); set ("tapeAge", 72.0f); set ("tapeMix", 70.0f);
@@ -131,63 +131,63 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             set ("chorusMix", 38.0f);
             set ("echoPattern", 4.0f); set ("echoTime", 560.0f); set ("echoRepeats", 36.0f);
             set ("echoTone", 3300.0f); set ("echoMix", 20.0f); set ("highCut", 9800.0f);
-            set ("springType", 4.0f); set ("springMix", 20.0f); break;
+            set ("springType", 2.0f); set ("springDecay", 52.0f); set ("springMix", 34.0f); break;
         case 6: // Vocal Ambience
             set ("tapeDrive", 11.0f); set ("tapeComp", 28.0f); set ("tapeMix", 28.0f);
             set ("chorusRate", 0.24f); set ("chorusDepth", 28.0f);
             set ("chorusWidth", 80.0f); set ("chorusMix", 14.0f);
             set ("echoPattern", 1.0f); set ("echoTime", 310.0f); set ("echoRepeats", 18.0f);
             set ("echoMix", 10.0f); set ("springType", 0.0f); set ("springDecay", 31.0f);
-            set ("springMix", 13.0f); set ("lowCut", 75.0f); break;
+            set ("springMix", 22.0f); set ("lowCut", 75.0f); break;
         case 7: // Tight Guitar Room
             set ("tapeDrive", 19.0f); set ("tapeComp", 34.0f); set ("tapeMix", 44.0f);
             set ("chorusRate", 0.18f); set ("chorusDepth", 20.0f);
             set ("chorusWidth", 68.0f); set ("chorusMix", 8.0f);
             set ("echoTime", 125.0f); set ("echoRepeats", 12.0f);
-            set ("echoMix", 7.0f); set ("springType", 5.0f); set ("springDecay", 22.0f);
-            set ("springDwell", 28.0f); set ("springMix", 18.0f); set ("lowCut", 45.0f); break;
+            set ("echoMix", 7.0f); set ("springType", 1.0f); set ("springDecay", 22.0f);
+            set ("springDwell", 28.0f); set ("springMix", 22.0f); set ("lowCut", 45.0f); break;
         case 8: // Purple Motion
             set ("tapeDrive", 28.0f); set ("tapeComp", 32.0f); set ("tapeMix", 54.0f);
             set ("chorusFlangerMode", 1.0f); set ("chorusRate", 0.22f); set ("chorusDepth", 58.0f);
             set ("chorusWidth", 42.0f); set ("chorusMix", 25.0f);
             set ("echoPattern", 2.0f); set ("echoTime", 330.0f); set ("echoRepeats", 24.0f);
-            set ("echoTone", 5200.0f); set ("echoMix", 15.0f); set ("springType", 5.0f);
-            set ("springDecay", 32.0f); set ("springMix", 18.0f); break;
+            set ("echoTone", 5200.0f); set ("echoMix", 15.0f); set ("springType", 1.0f);
+            set ("springDecay", 38.0f); set ("springMix", 26.0f); break;
         case 9: // Neon Slap
             set ("tapeDrive", 20.0f); set ("tapeMix", 40.0f);
             set ("chorusRate", 0.18f); set ("chorusDepth", 24.0f); set ("chorusWidth", 88.0f);
             set ("chorusMix", 18.0f); set ("echoPattern", 1.0f); set ("echoTime", 92.0f);
             set ("echoRepeats", 8.0f); set ("echoTone", 7600.0f); set ("echoMix", 13.0f);
-            set ("springType", 6.0f); set ("springDecay", 20.0f); set ("springMix", 10.0f); break;
+            set ("springType", 2.0f); set ("springDecay", 24.0f); set ("springMix", 15.0f); break;
         case 10: // Tape Mirage
             set ("tapeType", 1.0f); set ("tapeDrive", 46.0f); set ("tapeComp", 44.0f);
             set ("tapeTone", 38.0f); set ("tapeAge", 62.0f); set ("tapeMix", 72.0f);
             set ("chorusRate", 0.15f); set ("chorusDepth", 52.0f); set ("chorusWidth", 90.0f);
             set ("chorusMix", 28.0f); set ("echoPattern", 4.0f); set ("echoTime", 570.0f);
             set ("echoRepeats", 28.0f); set ("echoWobble", 50.0f); set ("echoDrive", 18.0f);
-            set ("echoMix", 22.0f); set ("springType", 4.0f); set ("springDecay", 42.0f);
-            set ("springDwell", 38.0f); set ("springMix", 28.0f); set ("highCut", 9200.0f); break;
+            set ("echoMix", 22.0f); set ("springType", 2.0f); set ("springDecay", 42.0f);
+            set ("springDwell", 36.0f); set ("springMix", 40.0f); set ("highCut", 9200.0f); break;
         case 11: // Crystal Dimension
             set ("tapeDrive", 14.0f); set ("tapeTone", 68.0f); set ("tapeMix", 32.0f);
             set ("chorusRate", 0.12f); set ("chorusDepth", 34.0f);
             set ("chorusWidth", 92.0f); set ("chorusMix", 22.0f); set ("echoPattern", 3.0f);
             set ("echoTime", 245.0f); set ("echoRepeats", 18.0f); set ("echoTone", 8800.0f);
-            set ("echoMix", 12.0f); set ("springType", 1.0f); set ("springDecay", 28.0f);
-            set ("springTone", 72.0f); set ("springMix", 14.0f); break;
+            set ("echoMix", 12.0f); set ("springType", 0.0f); set ("springDecay", 28.0f);
+            set ("springTone", 68.0f); set ("springMix", 24.0f); break;
         case 12: // Chrome Funk
             set ("tapeType", 0.0f); set ("tapeDrive", 58.0f); set ("tapeComp", 38.0f);
             set ("tapeTone", 56.0f); set ("tapeMix", 64.0f); set ("chorusFlangerMode", 2.0f);
             set ("chorusRate", 1.55f); set ("chorusDepth", 64.0f); set ("chorusWidth", 30.0f);
             set ("chorusMix", 25.0f); set ("echoPattern", 1.0f); set ("echoTime", 118.0f);
-            set ("echoRepeats", 12.0f); set ("echoMix", 10.0f); set ("springType", 6.0f);
-            set ("springDecay", 18.0f); set ("springMix", 9.0f); break;
+            set ("echoRepeats", 12.0f); set ("echoMix", 10.0f); set ("springType", 2.0f);
+            set ("springDecay", 22.0f); set ("springMix", 14.0f); break;
         case 13: // Beef Tape
             set ("tapeType", 0.0f); set ("tapeDrive", 76.0f); set ("tapeComp", 48.0f);
             set ("tapeTone", 48.0f); set ("tapeAge", 18.0f); set ("tapeMix", 88.0f);
             set ("chorusRate", 0.18f); set ("chorusDepth", 22.0f); set ("chorusWidth", 46.0f);
             set ("chorusMix", 6.0f); set ("echoTime", 105.0f); set ("echoRepeats", 7.0f);
-            set ("echoMix", 7.0f); set ("springType", 5.0f); set ("springDecay", 20.0f);
-            set ("springDwell", 30.0f); set ("springMix", 12.0f); set ("lowCut", 32.0f); break;
+            set ("echoMix", 7.0f); set ("springType", 1.0f); set ("springDecay", 20.0f);
+            set ("springDwell", 30.0f); set ("springMix", 18.0f); set ("lowCut", 32.0f); break;
         case 14: // Dirty Dimension
             set ("tapeType", 1.0f); set ("tapeDrive", 68.0f); set ("tapeComp", 42.0f);
             set ("tapeTone", 44.0f); set ("tapeAge", 35.0f); set ("tapeMix", 76.0f);
@@ -195,38 +195,38 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             set ("chorusWidth", 20.0f); set ("chorusMix", 21.0f);
             set ("echoPattern", 2.0f); set ("echoTime", 275.0f);
             set ("echoRepeats", 18.0f); set ("echoDrive", 22.0f); set ("echoMix", 14.0f);
-            set ("springType", 4.0f); set ("springDecay", 24.0f); set ("springMix", 12.0f); break;
+            set ("springType", 2.0f); set ("springDecay", 30.0f); set ("springMix", 20.0f); break;
         case 15: // Purple Jet
             set ("tapeType", 0.0f); set ("tapeDrive", 64.0f); set ("tapeComp", 28.0f);
             set ("tapeTone", 52.0f); set ("tapeMix", 70.0f); set ("chorusFlangerMode", 3.0f);
             set ("chorusRate", 2.10f); set ("chorusDepth", 78.0f); set ("chorusWidth", 20.0f);
             set ("chorusMix", 28.0f); set ("echoPattern", 3.0f); set ("echoTime", 360.0f);
             set ("echoRepeats", 25.0f); set ("echoTone", 4600.0f); set ("echoWobble", 20.0f);
-            set ("echoDrive", 26.0f); set ("echoMix", 18.0f); set ("springType", 2.0f);
-            set ("springDecay", 28.0f); set ("springMix", 15.0f); break;
+            set ("echoDrive", 26.0f); set ("echoMix", 18.0f); set ("springType", 0.0f);
+            set ("springDecay", 34.0f); set ("springMix", 24.0f); break;
         case 16: // Broken Cassette
             set ("tapeType", 1.0f); set ("tapeDrive", 82.0f); set ("tapeComp", 52.0f);
             set ("tapeTone", 34.0f); set ("tapeAge", 76.0f); set ("tapeMix", 92.0f);
             set ("chorusRate", 0.24f); set ("chorusDepth", 46.0f); set ("chorusWidth", 58.0f);
             set ("chorusMix", 18.0f); set ("echoPattern", 4.0f); set ("echoTime", 510.0f);
             set ("echoRepeats", 28.0f); set ("echoTone", 3000.0f); set ("echoWobble", 48.0f);
-            set ("echoDrive", 38.0f); set ("echoMix", 22.0f); set ("springType", 4.0f);
-            set ("springDecay", 34.0f); set ("springDwell", 38.0f); set ("springMix", 17.0f);
+            set ("echoDrive", 38.0f); set ("echoMix", 22.0f); set ("springType", 2.0f);
+            set ("springDecay", 42.0f); set ("springDwell", 36.0f); set ("springMix", 28.0f);
             set ("highCut", 8600.0f); break;
         case 17: // Midnight Tremolo
             set ("tapeType", 0.0f); set ("tapeDrive", 24.0f); set ("tapeComp", 24.0f);
             set ("tapeTone", 52.0f); set ("tapeMix", 46.0f); set ("tremoloOn", 1.0f);
             set ("tremolo", 38.0f); set ("chorusRate", 0.20f); set ("chorusDepth", 28.0f);
             set ("chorusWidth", 72.0f); set ("chorusMix", 12.0f); set ("echoTime", 285.0f);
-            set ("echoRepeats", 15.0f); set ("echoMix", 10.0f); set ("springType", 1.0f);
-            set ("springDecay", 28.0f); set ("springMix", 14.0f); break;
+            set ("echoRepeats", 15.0f); set ("echoMix", 10.0f); set ("springType", 0.0f);
+            set ("springDecay", 34.0f); set ("springMix", 26.0f); break;
         case 18: // Brownface Pulse
             set ("tapeType", 0.0f); set ("tapeDrive", 38.0f); set ("tapeComp", 32.0f);
             set ("tapeTone", 48.0f); set ("tapeMix", 58.0f); set ("tremoloOn", 1.0f);
             set ("tremolo", 62.0f); set ("chorusDepth", 0.0f); set ("chorusMix", 0.0f);
             set ("echoTime", 115.0f); set ("echoRepeats", 8.0f); set ("echoMix", 7.0f);
-            set ("springType", 5.0f); set ("springDecay", 24.0f); set ("springDwell", 30.0f);
-            set ("springMix", 18.0f); break;
+            set ("springType", 1.0f); set ("springDecay", 24.0f); set ("springDwell", 30.0f);
+            set ("springMix", 28.0f); break;
         case 19: // Tremolo Dream
             set ("tapeType", 1.0f); set ("tapeDrive", 30.0f); set ("tapeComp", 30.0f);
             set ("tapeTone", 43.0f); set ("tapeAge", 30.0f); set ("tapeMix", 54.0f);
@@ -234,7 +234,7 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             set ("chorusDepth", 46.0f); set ("chorusWidth", 84.0f); set ("chorusMix", 22.0f);
             set ("echoPattern", 4.0f); set ("echoTime", 480.0f); set ("echoRepeats", 22.0f);
             set ("echoTone", 3900.0f); set ("echoWobble", 22.0f); set ("echoMix", 16.0f);
-            set ("springType", 4.0f); set ("springDecay", 38.0f); set ("springMix", 20.0f);
+            set ("springType", 2.0f); set ("springDecay", 48.0f); set ("springMix", 34.0f);
             set ("highCut", 11000.0f); break;
         default: break;
     }
@@ -253,7 +253,22 @@ bool RockalizerAudioProcessor::loadPreset (int presetIndex)
     const auto inputLevelWas = readParameter ("inputLevel");
 
     if (presetIndex < factoryPresetCount)
-        loadFactoryPreset (presetIndex);
+    {
+        // Factory edits live in a hidden override directory. This preserves the
+        // factory preset's name and position instead of creating a duplicate.
+        const auto overrideFile = getUserPresetDirectory().getChildFile ("Factory Overrides")
+            .getChildFile (juce::File::createLegalFileName (names[presetIndex]) + ".xml");
+        auto loadedOverride = false;
+        if (presetIndex != 0 && overrideFile.existsAsFile())
+            if (auto xml = juce::XmlDocument::parse (overrideFile))
+                if (xml->hasTagName (parameters.state.getType()))
+                {
+                    parameters.replaceState (juce::ValueTree::fromXml (*xml));
+                    loadedOverride = true;
+                }
+        if (! loadedOverride)
+            loadFactoryPreset (presetIndex);
+    }
     else
     {
         const auto file = getUserPresetDirectory().getChildFile (
@@ -293,12 +308,52 @@ bool RockalizerAudioProcessor::saveUserPreset (const juce::String& presetName)
     if (legalName.isEmpty() || getUserPresetDirectory().createDirectory().failed())
         return false;
 
+    const auto existingNames = getPresetNames();
+    for (int index = 0; index < factoryPresetCount; ++index)
+        if (existingNames[index].equalsIgnoreCase (legalName))
+        {
+            // INIT is deliberately immutable so it always remains a reliable
+            // neutral starting point. Other factory presets can be edited in
+            // place through a hidden user override.
+            if (index == 0)
+                return false;
+            const auto overrideDirectory = getUserPresetDirectory().getChildFile ("Factory Overrides");
+            if (overrideDirectory.createDirectory().failed())
+                return false;
+            const auto overrideFile = overrideDirectory.getChildFile (
+                juce::File::createLegalFileName (existingNames[index]) + ".xml");
+            if (auto xml = parameters.copyState().createXml())
+            {
+                const auto success = overrideFile.replaceWithText (xml->toString());
+                if (success)
+                    currentPresetIndex = index;
+                return success;
+            }
+            return false;
+        }
+
     const auto file = getUserPresetDirectory().getChildFile (legalName + ".xml");
     if (auto xml = parameters.copyState().createXml())
     {
         const auto success = file.replaceWithText (xml->toString());
         if (success)
-            currentPresetIndex = getPresetNames().indexOf (legalName);
+        {
+            const auto refreshedNames = getPresetNames();
+            currentPresetIndex = -1;
+            for (int index = factoryPresetCount; index < refreshedNames.size(); ++index)
+                if (refreshedNames[index].equalsIgnoreCase (legalName))
+                {
+                    currentPresetIndex = index;
+                    break;
+                }
+
+            // The file write succeeded, so retain a valid user selection even
+            // if a filesystem naming edge case prevents an exact text match.
+            if (currentPresetIndex < factoryPresetCount)
+                currentPresetIndex = refreshedNames.size() > factoryPresetCount
+                    ? refreshedNames.size() - 1
+                    : 1;
+        }
         return success;
     }
     return false;
@@ -449,7 +504,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::cr
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "springOn", 1 }, "Spring On", true));
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "springType", 1 }, "Spring Type",
-        juce::StringArray { "British", "Deluxe", "201", "9100", "Tape Mixer", "German", "Hi-Fi" }, 0));
+        juce::StringArray { "201", "9100", "Tape" }, 0));
     for (auto item : { std::pair { "springDecay", "Spring Decay" }, std::pair { "springDwell", "Spring Dwell" },
                        std::pair { "springTone", "Spring Tone" }, std::pair { "springDrip", "Spring Drip" },
                        std::pair { "springMix", "Spring Mix" } })
@@ -723,7 +778,10 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     lowCutFilter.setCutoffFrequency (lowCutHz);
     const auto safeHighCut = juce::jmin (highCutHz, static_cast<float> (currentSampleRate * 0.45));
     highCutFilter.setCutoffFrequency (safeHighCut);
-    outputGain.setGainDecibels (outputGainDb);
+    // Global output calibration: Rockalizer should sit at a competitive level
+    // with its Output knob at 0 dB. The trim is independent of presets.
+    constexpr float outputCalibrationDb = 1.8f;
+    outputGain.setGainDecibels (outputGainDb + outputCalibrationDb);
 
     auto block = juce::dsp::AudioBlock<float> (buffer);
     auto context = juce::dsp::ProcessContextReplacing<float> (block);
@@ -839,8 +897,7 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     if (highCutHz < 19999.5f)
         highCutFilter.process (context);
-    if (std::abs (outputGainDb) > 0.0001f)
-        outputGain.process (context);
+    outputGain.process (context);
 
     // Last-resort safety rail: invalid samples become silence and runaway
     // values are bounded well above normal audio level without changing the

@@ -65,7 +65,7 @@ private:
                 "SIGNAL FLOW\nNoise Gate  >  Low Cut  >  Tape  >  Tremolo  >  Chorus/Flanger  >  "
                 "Echo  >  Spring  >  Hi Cut  >  Output\n\n"
                 "Rockalizer is an independent original plugin inspired by classic studio machines, "
-                "guitar pedals, and the spacious records of the 1980s and 1990s.\n\nVersion 0.57.0",
+                "guitar pedals, and the spacious records of the 1980s and 1990s.\n\nVersion 0.65.0",
                 card.toNearestInt().reduced (42, 150).translated (0, 58),
                 juce::Justification::centred, 12, 1.0f);
         }
@@ -230,7 +230,8 @@ private:
         {
             const auto on = getToggleState();
             auto imageBounds = getLocalBounds();
-            const auto ledWidth = juce::jmin (40, juce::jmax (22, getWidth() / 2));
+            const auto ledWidth = ledImage.isValid()
+                ? juce::jmin (40, juce::jmax (22, getWidth() / 2)) : 0;
             const auto imageArea = imageBounds.removeFromLeft (ledWidth).toFloat().reduced (2.0f);
             if (ledImage.isValid())
             {
@@ -380,11 +381,12 @@ private:
     LedToggleButton echoSyncButton { "SYNC" };
     juce::Slider tapeDriveSlider, tapeCompSlider, tapeToneSlider, tapeAgeSlider, tapeMixSlider;
     juce::Label tapeDriveLabel, tapeCompLabel, tapeToneLabel, tapeAgeLabel, tapeMixLabel;
-    juce::ComboBox tapeTypeBox, tapeOversamplingBox;
+    LedToggleButton tapeStudioButton { "STUDIO" }, tapeCassetteButton { "CASSETTE" };
+    juce::ComboBox tapeOversamplingBox;
     ModuleTitleButton tapeOnButton { "TAPE" };
     juce::Slider springDecaySlider, springDwellSlider, springToneSlider, springDripSlider, springMixSlider;
     juce::Label springDecayLabel, springDwellLabel, springToneLabel, springDripLabel, springMixLabel;
-    juce::ComboBox springTypeBox;
+    LedToggleButton spring201Button { "201" }, spring9100Button { "9100" }, springTapeMixerButton { "TAPE" };
     ModuleTitleButton springOnButton { "SPRING" };
     PowerIconButton powerButton;
     juce::TextButton presetPreviousButton { "<" };
@@ -432,11 +434,10 @@ private:
     std::unique_ptr<ButtonAttachment> echoOnAttachment, echoSyncAttachment;
     std::unique_ptr<SliderAttachment> tapeDriveAttachment, tapeCompAttachment, tapeToneAttachment;
     std::unique_ptr<SliderAttachment> tapeAgeAttachment, tapeMixAttachment;
-    std::unique_ptr<ComboBoxAttachment> tapeTypeAttachment, tapeOversamplingAttachment;
+    std::unique_ptr<ComboBoxAttachment> tapeOversamplingAttachment;
     std::unique_ptr<ButtonAttachment> tapeOnAttachment;
     std::unique_ptr<SliderAttachment> springDecayAttachment, springDwellAttachment, springToneAttachment;
     std::unique_ptr<SliderAttachment> springDripAttachment, springMixAttachment;
-    std::unique_ptr<ComboBoxAttachment> springTypeAttachment;
     std::unique_ptr<ButtonAttachment> springOnAttachment;
     std::unique_ptr<ButtonAttachment> input1Attachment;
     std::unique_ptr<ButtonAttachment> input2Attachment;

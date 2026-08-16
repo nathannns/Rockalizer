@@ -1,0 +1,21 @@
+# ninja log v7
+0	25	1786891420581498658	juce-populate-prefix/src/juce-populate-stamp/juce-populate-mkdir	dd5e5b8ee0448bae
+0	25	1786891420581498658	/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-mkdir	dd5e5b8ee0448bae
+25	32731	1786891453286573915	juce-populate-prefix/src/juce-populate-stamp/juce-populate-download	71d17105443883f4
+25	32731	1786891453286573915	/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-download	71d17105443883f4
+32731	32779	1786891453287219439	juce-populate-prefix/src/juce-populate-stamp/juce-populate-update	d432116c81b8eff5
+32731	32779	1786891453287219439	/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-update	d432116c81b8eff5
+32779	32805	1786891453360652470	juce-populate-prefix/src/juce-populate-stamp/juce-populate-patch	6fdd5017dab27f01
+32779	32805	1786891453360652470	/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-patch	6fdd5017dab27f01
+32805	32825	1786891453380308253	juce-populate-prefix/src/juce-populate-stamp/juce-populate-configure	50e8a7dece07b11
+32805	32825	1786891453380308253	/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-configure	50e8a7dece07b11
+32825	32846	1786891453401432913	juce-populate-prefix/src/juce-populate-stamp/juce-populate-build	66a3969165ab6d83
+32825	32846	1786891453401432913	/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-build	66a3969165ab6d83
+32851	32871	1786891453426992865	juce-populate-prefix/src/juce-populate-stamp/juce-populate-install	6d68e4b8abaaa4c6
+32851	32871	1786891453426992865	/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-install	6d68e4b8abaaa4c6
+32871	32891	1786891453446559152	juce-populate-prefix/src/juce-populate-stamp/juce-populate-test	b5273b3a783897a7
+32871	32891	1786891453446559152	/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-test	b5273b3a783897a7
+32891	32919	1786891453474679865	CMakeFiles/juce-populate-complete	aabf2e0844c25949
+32891	32919	1786891453474679865	juce-populate-prefix/src/juce-populate-stamp/juce-populate-done	aabf2e0844c25949
+32891	32919	1786891453474679865	/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/CMakeFiles/juce-populate-complete	aabf2e0844c25949
+32891	32919	1786891453474679865	/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-subbuild/juce-populate-prefix/src/juce-populate-stamp/juce-populate-done	aabf2e0844c25949

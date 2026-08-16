@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Rockalizer VERSION 0.57.0 LANGUAGES C CXX)
+project(Rockalizer VERSION 0.65.0 LANGUAGES C CXX)
 
 include(FetchContent)
 
@@ -26,13 +26,9 @@ juce_add_binary_data(RockalizerData SOURCES
     Resources/Images/pedal_chorus_v2.png
     Resources/Images/pedal_echo_v2.png
     Resources/Images/pedal_spring_v2.png
-    Resources/ImpulseResponses/Optimized/spring_gbsr_clean.wav
-    Resources/ImpulseResponses/Optimized/spring_deluxe_clean.wav
     Resources/ImpulseResponses/Optimized/spring_space_clean.wav
     Resources/ImpulseResponses/Optimized/spring_9100_clean.wav
     Resources/ImpulseResponses/Optimized/spring_echomixer_clean.wav
-    Resources/ImpulseResponses/Optimized/spring_schaller_clean.wav
-    Resources/ImpulseResponses/Optimized/spring_pioneer_clean.wav
 )
 
 juce_add_plugin(Rockalizer

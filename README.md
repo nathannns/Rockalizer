@@ -431,3 +431,97 @@ panel by explicitly using floating-point bounds, and cleans nearby conversions.
   unchanged parameters do not repeat unnecessary exponential calculations.
 - Caches unchanged Echo tone and Spring tone coefficients, plus Spring envelope
   timing constants, reducing repeated work in normal real-time processing.
+
+## v0.58.0 lush chorus refinement
+
+- Expands Chorus mode from three to four decorrelated delay voices.
+- Adds slow secondary motion for a denser ensemble without obvious vibrato.
+- Removes Chorus-mode feedback to prevent metallic ringing on sustained notes;
+  Flanger feedback remains unchanged.
+- Adds restrained BBD/compander rounding and low-mid warmth.
+- Rebalances dry and wet energy so high Mix settings remain smoother and more
+  even instead of pulsing or thinning the guitar.
+
+## v0.59.0 spring, preset, and depth update
+
+- Fixes saved user presets selecting `-- INIT --` by resolving the written
+  user file case-insensitively and never accepting an invalid preset index.
+- Saving a factory preset name now creates a uniquely named user copy.
+- Raises the Spring dry floor at high Mix, reduces transient ducking, and adds
+  a denser, softly damped late tail so bloom increases without losing the note.
+- Deepens Chorus Depth while leaving Flanger depth calibration intact.
+- Revoices all factory presets for the upgraded Spring Mix range, including
+  several deliberately wetter ambient sounds.
+
+## v0.60.0 spring architecture and preset editing
+
+- Saving an edited factory preset now updates a hidden user override under the
+  same name and preset position; it no longer creates a duplicate. User presets
+  continue to overwrite their own XML file. `-- INIT --` remains immutable.
+- Rebuilds Spring as a hybrid processor: the selected IR supplies its physical
+  onset and resonances, followed by a damped four-line feedback matrix for a
+  smoother, denser two-stage bloom at high Mix and Decay settings.
+- Retains only three deliberately distinct tanks: 201, 9100, and Tape Mixer.
+  British, Deluxe, German, and Hi-Fi and their embedded WAV assets are removed.
+- Replaces Tape and Spring dropdowns with immediately visible segmented model
+  selectors using the same condensed uppercase style as FLANGER and SYNC.
+- Adds a global +1.8 dB output calibration after the effects and filters. This
+  applies consistently to every preset while the Output knob remains at 0 dB.
+
+## v0.61.0 integrated selectors and spatial refinement
+
+- Replaces the boxed orange Tape and Spring selectors with the same unboxed
+  LED-and-word treatment used by FLANGER and SYNC.
+- Places Tape model, Flanger modes, Echo type/Sync, and Spring model controls
+  on one shared horizontal baseline.
+- Refines Chorus around Dimension-style behavior: four shallow staggered BBD
+  taps, slower multi-phase motion, restrained compressor/expander dynamics,
+  warmer filtering, steadier dry anchoring, and more controlled stereo
+  crossmix for lush width without obvious pitch wobble.
+- Adds extremely slow sub-millisecond modulation to the Spring late-field
+  delay network. This disperses fixed resonances and produces a smoother,
+  denser bloom while leaving the physical IR attack and tank identity intact.
+
+## v0.62.0 selector and preset organisation
+
+- Rebuilds the FLANGER wordmark with the same upright bold typography and
+  vertical alignment as its two mode controls.
+- Removes LEDs from Tape and Spring model selectors, leaving compact unboxed
+  text states that remain readable at the minimum editor size.
+- Renames the Tape Mixer spring model to Tape and redistributes all three
+  Spring model hit targets evenly across the pedal.
+- Moves both footer meters downward for clearer separation from their knobs.
+- Separates the preset menu into Factory Presets and User Presets sections
+  while preserving every existing preset ID, saved-project reference, and
+  factory override.
+
+## v0.63.0 model grouping and high-mix spring wash
+
+- Tightens the model labels into two deliberate control groups and adds visible
+  separators: `STUDIO | CASSETTE` and `201 | 9100 | TAPE`.
+- Uses balanced label widths and gaps so both groups remain centred and legible
+  throughout the editor's supported resize range.
+- Preserves Spring's direct-signal clarity through normal insert Mix settings,
+  then applies a nonlinear transition above 65%: dry level falls further while
+  wet level rises slightly, producing a genuinely washy high-Mix sound without
+  abruptly losing the guitar.
+
+## v0.65.0 softer spring tail and selector spacing
+
+- Extended the measured spring onset and its taper so it blends smoothly into the late decay field.
+- Increased the late-field overlap at longer decay settings to prevent an audible abrupt ending.
+- Moved `STUDIO` and `201` inward toward their separators for more balanced model selectors.
+
+## v0.64.0 multi-spring tank architecture
+
+- Keeps a short, fixed physical onset from each selected IR instead of
+  rebuilding and shortening a multi-second convolution whenever Decay moves.
+- Moves Decay into a continuously calculated 0.8–10 second feedback tank,
+  eliminating quantised IR-length changes and producing a smoother tail.
+- Adds model-specific interacting dispersive paths: two darker springs for
+  201, three balanced springs for 9100, and two uneven character springs for
+  Tape. These feed the modulated four-line late field for increased complexity.
+- Integrates Tone into both output filtering and late-field damping, while
+  Drip now also excites the dispersive spring network.
+- Re-centres `STUDIO | CASSETTE` and `201 | 9100 | TAPE` using balanced visual
+  whitespace on both sides of every separator.

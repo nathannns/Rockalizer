@@ -1,4 +1,4 @@
-# Rockalizer v0.57.0
+# Rockalizer v0.65.0
 
 This package is a complete source snapshot. Replace your current project folder
 with this folder, or copy `Source`, `Resources`, `CMakeLists.txt`, and `README.md`
@@ -7,7 +7,7 @@ into your existing Rockalizer checkout.
 On macOS, build the Release version from Terminal:
 
 ```bash
-cd ~/Downloads/Rockalizer-v0.57.0
+cd ~/Downloads/Rockalizer-v0.65.0
 cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build-release
 open build-release/Rockalizer_artefacts/Release/Standalone/Rockalizer.app

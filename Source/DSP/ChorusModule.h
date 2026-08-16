@@ -16,12 +16,16 @@ private:
 
     juce::AudioBuffer<float> delayBuffer;
     juce::SmoothedValue<float> rateValue, depthValue, widthValue, wetMix, flangerBlend, aggressionValue;
-    std::vector<float> toneState, crossLowState, feedbackState;
+    std::vector<float> toneState, warmBodyState, crossLowState, feedbackState, companderEnvelope;
     double sampleRate = 44100.0;
     int writeIndex = 0;
     int validSamples = 0;
     float lfoPhase = 0.0f;
+    float secondaryPhase = 0.0f;
     float toneCoefficient = 1.0f;
+    float warmBodyCoefficient = 1.0f;
     float crossLowCoefficient = 1.0f;
+    float companderAttack = 1.0f;
+    float companderRelease = 1.0f;
     float cachedToneHz = -1.0f;
 };

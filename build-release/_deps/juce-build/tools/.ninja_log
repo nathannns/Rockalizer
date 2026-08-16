@@ -1,0 +1,17 @@
+# ninja log v7
+1	42	1786891454286996573	/Users/nathanielsantiaji/Downloads/Rockalizer-GitHub/build-release/_deps/juce-build/tools/CMakeFiles/cmake.verify_globs	5d60f3331751fe96
+43	340	1786891454329589465	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_Sheenbidi.c.o	bac243a544e0ac42
+42	2359	1786891454328678699	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/juce_build_tools/juce_build_tools.cpp.o	665e3035a11c4906
+42	2422	1786891454328420081	extras/Build/juceaide/CMakeFiles/juceaide.dir/Main.cpp.o	43aaa3081891ef38
+2365	2456	1786891456651655203	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_core/juce_core_CompilationTime.cpp.o	ab9a9715e4852e9
+341	3149	1786891454627810961	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_events/juce_events.mm.o	c73ffb36d7da525e
+43	3226	1786891454328813154	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_gui_basics/juce_gui_basics_2.cpp.o	81707f9dc6088711
+2456	3809	1786891456742580244	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_data_structures/juce_data_structures.mm.o	3884d1e6579cb000
+43	3834	1786891454329185976	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_gui_basics/juce_gui_basics_5.cpp.o	dfec85ac0ad707ea
+43	3927	1786891454329063397	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_gui_basics/juce_gui_basics_4.cpp.o	e274e4d6bd9d3432
+43	5038	1786891454328943150	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_gui_basics/juce_gui_basics_3.cpp.o	6c7b85175e4301b4
+2422	5821	1786891456708656734	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_core/juce_core.mm.o	272ab569dba17894
+43	6266	1786891454329313015	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_gui_basics/juce_gui_basics.mm.o	b9bb3c5e18d8d5d5
+43	6946	1786891454329728878	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics.mm.o	d3221902390b1511
+43	7123	1786891454329446761	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_Harfbuzz.cpp.o	c0e27b2a1db6b28a
+7124	7334	1786891461410106352	extras/Build/juceaide/juceaide_artefacts/Custom/juceaide	384f7416c8d927e8
