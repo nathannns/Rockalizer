@@ -27,6 +27,75 @@ private:
         }
     };
 
+    class AboutPanel final : public juce::Component
+    {
+    public:
+        AboutPanel() : closeButton ("Close")
+        {
+            closeButton.onClick = [this] { setVisible (false); };
+            closeButton.setTooltip ("Close About Rockalizer");
+            addAndMakeVisible (closeButton);
+        }
+        void setLogo (juce::Image image) { logo = std::move (image); }
+        void paint (juce::Graphics& g) override
+        {
+            g.setColour (juce::Colours::black.withAlpha (0.72f));
+            g.fillAll();
+            const auto card = getLocalBounds().toFloat().withSizeKeepingCentre (
+                juce::jmin (560.0f, static_cast<float> (getWidth()) * 0.72f),
+                juce::jmin (430.0f, static_cast<float> (getHeight()) * 0.78f));
+            g.setColour (juce::Colour (0xff11161b));
+            g.fillRoundedRectangle (card, 16.0f);
+            g.setColour (juce::Colour (0xff495158));
+            g.drawRoundedRectangle (card, 16.0f, 1.5f);
+            if (logo.isValid())
+                g.drawImage (logo, card.reduced (70.0f, 22.0f).removeFromTop (92.0f),
+                             juce::RectanglePlacement::centred, false);
+            g.setColour (juce::Colour (0xfff0eee8));
+            g.setFont (juce::FontOptions (17.0f, juce::Font::bold));
+            g.drawText ("ANALOG-INSPIRED GUITAR CHARACTER SUITE",
+                        juce::Rectangle<float> { card.getX() + 35.0f, card.getY() + 120.0f,
+                                                 card.getWidth() - 70.0f, 28.0f },
+                        juce::Justification::centred, false);
+            g.setColour (juce::Colour (0xffb8bec3));
+            g.setFont (juce::FontOptions (14.0f));
+            g.drawFittedText (
+                "Tape saturation and compression, lush stereo chorus/flanger, musical echo, "
+                "Fender-style tremolo, and convolution spring reverb in one focused signal path.\n\n"
+                "SIGNAL FLOW\nNoise Gate  >  Low Cut  >  Tape  >  Tremolo  >  Chorus/Flanger  >  "
+                "Echo  >  Spring  >  Hi Cut  >  Output\n\n"
+                "Rockalizer is an independent original plugin inspired by classic studio machines, "
+                "guitar pedals, and the spacious records of the 1980s and 1990s.\n\nVersion 0.57.0",
+                card.toNearestInt().reduced (42, 150).translated (0, 58),
+                juce::Justification::centred, 12, 1.0f);
+        }
+        void resized() override
+        {
+            const auto card = getLocalBounds().toFloat().withSizeKeepingCentre (
+                juce::jmin (560.0f, static_cast<float> (getWidth()) * 0.72f),
+                juce::jmin (430.0f, static_cast<float> (getHeight()) * 0.78f));
+            closeButton.setBounds (juce::roundToInt (card.getRight() - 48.0f),
+                                   juce::roundToInt (card.getY() + 14.0f), 34, 34);
+        }
+    private:
+        class CloseButton final : public juce::Button
+        {
+        public:
+            explicit CloseButton (const juce::String& name) : juce::Button (name) {}
+            void paintButton (juce::Graphics& g, bool highlighted, bool down) override
+            {
+                auto colour = juce::Colour (0xffb8bec3);
+                if (highlighted) colour = juce::Colour (0xffff8a45);
+                if (down) colour = colour.darker (0.18f);
+                const auto area = getLocalBounds().toFloat().reduced (8.0f);
+                g.setColour (colour);
+                g.drawLine (juce::Line<float> { area.getTopLeft(), area.getBottomRight() }, 2.2f);
+                g.drawLine (juce::Line<float> { area.getTopRight(), area.getBottomLeft() }, 2.2f);
+            }
+        } closeButton;
+        juce::Image logo;
+    };
+
     class GearButton final : public juce::Button
     {
     public:
@@ -151,6 +220,94 @@ private:
         }
     };
 
+    class LedToggleButton final : public juce::Button
+    {
+    public:
+        explicit LedToggleButton (const juce::String& name)
+            : juce::Button (name), label (name.toUpperCase()) { setClickingTogglesState (true); }
+        void setLedImage (const juce::Image& image) { ledImage = image; repaint(); }
+        void paintButton (juce::Graphics& g, bool highlighted, bool down) override
+        {
+            const auto on = getToggleState();
+            auto imageBounds = getLocalBounds();
+            const auto ledWidth = juce::jmin (40, juce::jmax (22, getWidth() / 2));
+            const auto imageArea = imageBounds.removeFromLeft (ledWidth).toFloat().reduced (2.0f);
+            if (ledImage.isValid())
+            {
+                g.setOpacity (on ? 1.0f : (highlighted ? 0.34f : 0.20f));
+                g.drawImage (ledImage, imageArea, juce::RectanglePlacement::centred, false);
+                g.setOpacity (1.0f);
+            }
+            g.setColour (on ? juce::Colour (0xffffa05b)
+                            : juce::Colour (0xff8b9297).withAlpha (highlighted ? 0.90f : 0.68f));
+            g.setFont (juce::FontOptions (juce::jlimit (10.0f, 15.5f, static_cast<float> (getHeight()) * 0.49f),
+                                          juce::Font::bold));
+            g.drawText (label, ledWidth, 0, getWidth() - ledWidth, getHeight(),
+                        juce::Justification::centredLeft);
+            if (down)
+            {
+                g.setColour (juce::Colours::black.withAlpha (0.18f));
+                g.fillRoundedRectangle (getLocalBounds().toFloat(), 6.0f);
+            }
+        }
+    private:
+        juce::Image ledImage;
+        juce::String label;
+    };
+
+    class PresetIconButton final : public juce::Button
+    {
+    public:
+        enum class Icon { add, save, remove };
+        PresetIconButton (const juce::String& name, Icon iconToDraw)
+            : juce::Button (name), icon (iconToDraw) {}
+        void paintButton (juce::Graphics& g, bool highlighted, bool down) override
+        {
+            auto colour = isEnabled() ? juce::Colour (0xfff0eee8) : juce::Colour (0xff555b60);
+            if (highlighted && isEnabled()) colour = juce::Colour (0xffffa05b);
+            if (down) colour = colour.darker (0.18f);
+            const auto b = getLocalBounds().toFloat().reduced (10.0f, 7.0f);
+            g.setColour (colour);
+            if (icon == Icon::add)
+            {
+                g.drawLine (b.getCentreX(), b.getY(), b.getCentreX(), b.getBottom(), 2.4f);
+                g.drawLine (b.getX(), b.getCentreY(), b.getRight(), b.getCentreY(), 2.4f);
+            }
+            else if (icon == Icon::save)
+            {
+                g.drawRoundedRectangle (b, 2.0f, 2.0f);
+                g.fillRect (b.getX() + b.getWidth() * 0.20f, b.getY(), b.getWidth() * 0.52f, b.getHeight() * 0.34f);
+                g.setColour (juce::Colour (0xff151a1e));
+                g.fillRect (b.getX() + b.getWidth() * 0.30f, b.getY() + 2.0f, b.getWidth() * 0.28f, b.getHeight() * 0.19f);
+                g.setColour (colour);
+                g.drawRoundedRectangle (b.reduced (b.getWidth() * 0.20f, b.getHeight() * 0.16f)
+                                           .withTrimmedTop (b.getHeight() * 0.28f), 1.5f, 1.7f);
+            }
+            else
+            {
+                auto can = b.reduced (b.getWidth() * 0.18f, b.getHeight() * 0.12f);
+                g.drawRoundedRectangle (can.withTrimmedTop (can.getHeight() * 0.22f), 1.5f, 2.0f);
+                g.drawLine (can.getX() - 2.0f, can.getY() + can.getHeight() * 0.18f,
+                            can.getRight() + 2.0f, can.getY() + can.getHeight() * 0.18f, 2.0f);
+                g.drawLine (can.getCentreX() - 4.0f, can.getY(), can.getCentreX() + 4.0f, can.getY(), 2.0f);
+            }
+        }
+    private:
+        Icon icon;
+    };
+
+    class InvisibleLogoButton final : public juce::Button
+    {
+    public:
+        InvisibleLogoButton() : juce::Button ("About Rockalizer")
+        {
+            setWantsKeyboardFocus (false);
+            setMouseClickGrabsKeyboardFocus (false);
+        }
+
+        void paintButton (juce::Graphics&, bool, bool) override {}
+    };
+
     class PluginLookAndFeel final : public juce::LookAndFeel_V4
     {
     public:
@@ -158,6 +315,12 @@ private:
         void drawRotarySlider (juce::Graphics&, int x, int y, int width, int height,
                                float sliderPosition, float rotaryStartAngle,
                                float rotaryEndAngle, juce::Slider&) override;
+        juce::Font getComboBoxFont (juce::ComboBox& box) override
+        {
+            return juce::Font (juce::FontOptions (juce::jlimit (10.0f, 15.0f,
+                                                                static_cast<float> (box.getHeight()) * 0.46f),
+                                                  juce::Font::bold));
+        }
 
     private:
         juce::Image knobImage;
@@ -178,6 +341,7 @@ private:
     RockalizerAudioProcessor& processor;
     PluginLookAndFeel pluginLookAndFeel;
     juce::Image pluginBackground;
+    juce::Image flangerLedImage;
     juce::Image rockalizerLogo;
     juce::Image tapeLogo, chorusLogo, echoLogo, springLogo;
     juce::Image tapePedalImage;
@@ -188,13 +352,18 @@ private:
     juce::Slider inputSlider;
     juce::Slider lowCutSlider;
     juce::Slider highCutSlider;
+    juce::Slider tremoloSlider;
+    juce::TextButton tremoloBypassButton { "TREMOLO" };
     juce::Slider outputSlider;
     juce::Slider noiseCutSlider;
+    juce::TextButton noiseGateBypassButton { "NOISE GATE" };
     juce::Slider chorusRateSlider;
     juce::Slider chorusDepthSlider;
     juce::Slider chorusWidthSlider;
     juce::Slider chorusToneSlider;
     juce::Slider chorusMixSlider;
+    LedToggleButton chorusFlangerMode1Button { "I" };
+    LedToggleButton chorusFlangerMode2Button { "II" };
 
     juce::Label chorusRateLabel;
     juce::Label chorusDepthLabel;
@@ -208,10 +377,10 @@ private:
     juce::Label echoWobbleLabel, echoDriveLabel, echoMixLabel;
     juce::ComboBox echoPatternBox;
     ModuleTitleButton echoOnButton { "ECHO" };
-    juce::ToggleButton echoSyncButton { "SYNC" };
+    LedToggleButton echoSyncButton { "SYNC" };
     juce::Slider tapeDriveSlider, tapeCompSlider, tapeToneSlider, tapeAgeSlider, tapeMixSlider;
     juce::Label tapeDriveLabel, tapeCompLabel, tapeToneLabel, tapeAgeLabel, tapeMixLabel;
-    juce::ComboBox tapeTypeBox;
+    juce::ComboBox tapeTypeBox, tapeOversamplingBox;
     ModuleTitleButton tapeOnButton { "TAPE" };
     juce::Slider springDecaySlider, springDwellSlider, springToneSlider, springDripSlider, springMixSlider;
     juce::Label springDecayLabel, springDwellLabel, springToneLabel, springDripLabel, springMixLabel;
@@ -220,16 +389,20 @@ private:
     PowerIconButton powerButton;
     juce::TextButton presetPreviousButton { "<" };
     juce::TextButton presetNextButton { ">" };
-    juce::TextButton presetSaveButton { "SAVE" };
-    juce::TextButton presetNewButton { "NEW" };
+    PresetIconButton presetSaveButton { "Save preset", PresetIconButton::Icon::save };
+    PresetIconButton presetNewButton { "New preset", PresetIconButton::Icon::add };
+    PresetIconButton presetDeleteButton { "Delete preset", PresetIconButton::Icon::remove };
     juce::ComboBox presetBox;
     juce::TextButton presetDropdownButton { "v" };
     OptionsPanel optionsGroup;
+    AboutPanel aboutPanel;
+    InvisibleLogoButton logoButton;
     GearButton optionsMenuButton;
     juce::ToggleButton input1Button { "INPUT 1" };
     juce::ToggleButton input2Button { "INPUT 2" };
     AdvancedTextButton advancedButton;
     juce::ComboBox inputLevelBox;
+    juce::Label tapeOversamplingLabel;
     bool optionsVisible = false;
     bool advancedMode = false;
     bool lastEchoSyncState = false;
@@ -242,8 +415,11 @@ private:
     std::unique_ptr<SliderAttachment> inputAttachment;
     std::unique_ptr<SliderAttachment> lowCutAttachment;
     std::unique_ptr<SliderAttachment> highCutAttachment;
+    std::unique_ptr<SliderAttachment> tremoloAttachment;
+    std::unique_ptr<ButtonAttachment> tremoloBypassAttachment;
     std::unique_ptr<SliderAttachment> outputAttachment;
     std::unique_ptr<SliderAttachment> noiseCutAttachment;
+    std::unique_ptr<ButtonAttachment> noiseGateBypassAttachment;
     std::unique_ptr<SliderAttachment> chorusRateAttachment;
     std::unique_ptr<SliderAttachment> chorusDepthAttachment;
     std::unique_ptr<SliderAttachment> chorusWidthAttachment;
@@ -256,7 +432,7 @@ private:
     std::unique_ptr<ButtonAttachment> echoOnAttachment, echoSyncAttachment;
     std::unique_ptr<SliderAttachment> tapeDriveAttachment, tapeCompAttachment, tapeToneAttachment;
     std::unique_ptr<SliderAttachment> tapeAgeAttachment, tapeMixAttachment;
-    std::unique_ptr<ComboBoxAttachment> tapeTypeAttachment;
+    std::unique_ptr<ComboBoxAttachment> tapeTypeAttachment, tapeOversamplingAttachment;
     std::unique_ptr<ButtonAttachment> tapeOnAttachment;
     std::unique_ptr<SliderAttachment> springDecayAttachment, springDwellAttachment, springToneAttachment;
     std::unique_ptr<SliderAttachment> springDripAttachment, springMixAttachment;

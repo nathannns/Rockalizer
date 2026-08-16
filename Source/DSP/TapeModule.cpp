@@ -4,17 +4,27 @@ void TapeModule::prepare (const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = spec.sampleRate;
     const auto channels = static_cast<int> (spec.numChannels);
-    wowBuffer.setSize (channels, static_cast<int> (sampleRate * 0.04) + 4);
-    envelope.assign (channels, 0.0f); toneState.assign (channels, 0.0f);
-    detectorLowState.assign (channels, 0.0f); magnetisationState.assign (channels, 0.0f);
-    bassState.assign (channels, 0.0f); midState.assign (channels, 0.0f);
-    wetMix.reset (sampleRate, 0.02);
+    const auto channelCount = static_cast<size_t> (channels);
+    wowBuffer.setSize (channels, static_cast<int> (sampleRate * 4.0 * 0.04) + 4);
+    wowBuffer.clear();
+    envelope.assign (channelCount, 0.0f); toneState.assign (channelCount, 0.0f);
+    detectorLowState.assign (channelCount, 0.0f); magnetisationState.assign (channelCount, 0.0f);
+    bassState.assign (channelCount, 0.0f); midState.assign (channelCount, 0.0f);
+    oversampling2x = std::make_unique<juce::dsp::Oversampling<float>> (
+        static_cast<size_t> (channels), 1,
+        juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, false);
+    oversampling4x = std::make_unique<juce::dsp::Oversampling<float>> (
+        static_cast<size_t> (channels), 2,
+        juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, false);
+    oversampling2x->initProcessing (spec.maximumBlockSize);
+    oversampling4x->initProcessing (spec.maximumBlockSize);
+    wetMix.reset (sampleRate * 4.0, 0.02);
     reset();
 }
 
 void TapeModule::reset()
 {
-    wowBuffer.clear(); writeIndex = 0; lfoPhase = 0.0f;
+    writeIndex = 0; validSamples = 0; lfoPhase = 0.0f;
     std::fill (envelope.begin(), envelope.end(), 0.0f);
     std::fill (detectorLowState.begin(), detectorLowState.end(), 0.0f);
     std::fill (magnetisationState.begin(), magnetisationState.end(), 0.0f);
@@ -22,10 +32,12 @@ void TapeModule::reset()
     std::fill (bassState.begin(), bassState.end(), 0.0f);
     std::fill (midState.begin(), midState.end(), 0.0f);
     wetMix.setCurrentAndTargetValue (0.0f);
+    if (oversampling2x != nullptr) oversampling2x->reset();
+    if (oversampling4x != nullptr) oversampling4x->reset();
 }
 
 void TapeModule::setParameters (float drive, float compression, float tone, float age,
-                                float mix, bool enabled, int type)
+                                float mix, bool enabled, int type, int oversamplingMode)
 {
     const auto normalisedDrive = juce::jlimit (0.0f, 1.0f, drive * 0.01f);
     // A slower lower half gives useful clean headroom. The nonlinearity itself
@@ -35,11 +47,22 @@ void TapeModule::setParameters (float drive, float compression, float tone, floa
     toneValue = juce::jlimit (0.0f, 1.0f, tone * 0.01f);
     ageValue = juce::jlimit (0.0f, 1.0f, age * 0.01f);
     tapeType = juce::jlimit (0, 1, type);
+    const auto requestedOversampling = juce::jlimit (0, 2, oversamplingMode);
+    if (requestedOversampling != oversamplingChoice)
+    {
+        oversamplingChoice = requestedOversampling;
+        writeIndex = validSamples = 0;
+        lfoPhase = 0.0f;
+        if (oversamplingChoice == 1 && oversampling2x != nullptr) oversampling2x->reset();
+        if (oversamplingChoice == 2 && oversampling4x != nullptr) oversampling4x->reset();
+    }
     wetMix.setTargetValue (enabled ? juce::jlimit (0.0f, 1.0f, mix * 0.01f) : 0.0f);
 }
 
 float TapeModule::readWow (int channel, float distance) const
 {
+    if (distance > static_cast<float> (validSamples))
+        return 0.0f;
     const auto size = wowBuffer.getNumSamples();
     auto position = static_cast<float> (writeIndex) - distance;
     while (position < 0.0f) position += static_cast<float> (size);
@@ -54,6 +77,36 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
     if (! wetMix.isSmoothing() && wetMix.getCurrentValue() <= 0.00001f)
         return;
 
+    // At the calibrated neutral point this module is mathematically clean;
+    // avoid running the record/repro model at all.
+    if (driveValue <= 0.000001f && compValue <= 0.000001f
+        && ageValue <= 0.000001f && std::abs (toneValue - 0.60f) <= 0.0001f)
+        return;
+
+    if (oversamplingChoice == 0)
+    {
+        processCore (buffer, sampleRate);
+        return;
+    }
+    auto* oversampler = oversamplingChoice == 1 ? oversampling2x.get() : oversampling4x.get();
+    if (oversampler == nullptr)
+        return;
+    juce::dsp::AudioBlock<float> inputBlock (buffer);
+    auto oversampledBlock = oversampler->processSamplesUp (inputBlock);
+    std::array<float*, 2> channelPointers {};
+    const auto oversampledChannels = juce::jmin (channelPointers.size(),
+                                                  oversampledBlock.getNumChannels());
+    for (size_t channel = 0; channel < oversampledChannels; ++channel)
+        channelPointers[channel] = oversampledBlock.getChannelPointer (channel);
+    juce::AudioBuffer<float> oversampledBuffer (channelPointers.data(),
+                                                static_cast<int> (oversampledChannels),
+                                                static_cast<int> (oversampledBlock.getNumSamples()));
+    processCore (oversampledBuffer, sampleRate * (oversamplingChoice == 1 ? 2.0 : 4.0));
+    oversampler->processSamplesDown (inputBlock);
+}
+
+void TapeModule::processCore (juce::AudioBuffer<float>& buffer, double processingRate)
+{
     const auto channels = juce::jmin (buffer.getNumChannels(), wowBuffer.getNumChannels());
     const auto cassetteMode = tapeType == cassette;
     constexpr float kneeDb = 8.0f;
@@ -64,25 +117,30 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
     const auto cutoffBottom = cassetteMode ? 1900.0f : 5000.0f;
     const auto colouredCutoff = juce::jmap (toneValue, cutoffBottom, cutoffTop)
                               * (1.0f - ageValue * (cassetteMode ? 0.68f : 0.42f));
-    const auto transparentCutoff = juce::jmin (20000.0f, static_cast<float> (sampleRate * 0.45));
+    const auto transparentCutoff = juce::jmin (20000.0f, static_cast<float> (processingRate * 0.45));
     const auto transparentToneCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
-                                                              * transparentCutoff / static_cast<float> (sampleRate));
+                                                              * transparentCutoff / static_cast<float> (processingRate));
     const auto colouredToneCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
-                                                           * colouredCutoff / static_cast<float> (sampleRate));
+                                                           * colouredCutoff / static_cast<float> (processingRate));
     const auto bassCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
                                                    * (cassetteMode ? 155.0f : 85.0f)
-                                                   / static_cast<float> (sampleRate));
+                                                   / static_cast<float> (processingRate));
     const auto midCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
-                                                  * 1250.0f / static_cast<float> (sampleRate));
+                                                  * 1250.0f / static_cast<float> (processingRate));
     const auto detectorLowCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
-                                                          * 120.0f / static_cast<float> (sampleRate));
+                                                          * 120.0f / static_cast<float> (processingRate));
     const auto magnetisationCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
                                                             * (cassetteMode ? 5200.0f : 7800.0f)
-                                                            / static_cast<float> (sampleRate));
-    const auto attackSeconds = juce::jmap (compValue, 0.014f, 0.006f);
-    const auto releaseSeconds = juce::jmap (compValue, 0.145f, 0.300f);
-    const auto attack = std::exp (-1.0f / (static_cast<float> (sampleRate) * attackSeconds));
-    const auto release = std::exp (-1.0f / (static_cast<float> (sampleRate) * releaseSeconds));
+                                                            / static_cast<float> (processingRate));
+    auto attack = 0.0f;
+    auto release = 0.0f;
+    if (compValue > 0.000001f)
+    {
+        const auto attackSeconds = juce::jmap (compValue, 0.014f, 0.006f);
+        const auto releaseSeconds = juce::jmap (compValue, 0.145f, 0.300f);
+        attack = std::exp (-1.0f / (static_cast<float> (processingRate) * attackSeconds));
+        release = std::exp (-1.0f / (static_cast<float> (processingRate) * releaseSeconds));
+    }
     const auto wowRate = cassetteMode ? 0.75f : 0.32f;
     // Keep wow subtle. Large values mixed with the dry path create audible
     // comb-filter amplitude movement that can be mistaken for tremolo.
@@ -91,7 +149,8 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
     // travel time is irrelevant to the timbre and must not be mixed against an
     // undelayed copy; doing so created the detached "distortion underneath"
     // sound. Only AGE introduces a very short transport displacement.
-    const auto baseDelay = static_cast<float> (sampleRate) * 0.00065f;
+    const auto baseDelay = static_cast<float> (processingRate) * 0.00065f;
+    const auto ageProcessingEnabled = ageValue > 0.0001f && driveValue > 0.0001f;
 
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
     {
@@ -111,12 +170,17 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
         {
             const auto dry = buffer.getSample (channel, sample);
 
-            wowBuffer.setSample (channel, writeIndex, dry);
+            if (ageProcessingEnabled)
+                wowBuffer.setSample (channel, writeIndex, dry);
             // Both channels share the same transport motion. A stereo phase
             // offset made mono guitars wander from left to right.
-            const auto wow = std::sin (lfoPhase) * wowDepthMs * effectiveAge * 0.001f
-                           * static_cast<float> (sampleRate);
-            auto x = effectiveAge > 0.0001f ? readWow (channel, baseDelay + wow) : dry;
+            auto x = dry;
+            if (ageProcessingEnabled && effectiveAge > 0.0001f)
+            {
+                const auto wow = std::sin (lfoPhase) * wowDepthMs * effectiveAge * 0.001f
+                               * static_cast<float> (processingRate);
+                x = readWow (channel, baseDelay + wow);
+            }
 
             // Drive represents record flux above a unity-calibrated clean
             // baseline. Increasing it lowers available headroom; inverse gain
@@ -145,6 +209,23 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
             // approach the magnetic ceiling are compressed and saturated.
             x *= juce::Decibels::decibelsToGain (-inputDb);
 
+            // Above roughly 78% Drive, blend in a small, level-compensated
+            // magnetic-overload edge. It adds the requested fuzzy hair only
+            // at the top of the existing response instead of redesigning the
+            // low and mid Drive range.
+            const auto fuzzAmount = juce::jlimit (0.0f, 1.0f,
+                                                   (driveValue - 0.78f) / 0.22f)
+                                  * characterAmount;
+            if (fuzzAmount > 0.0001f)
+            {
+                const auto fuzzDrive = cassetteMode ? 5.8f : 4.6f;
+                const auto asymmetry = cassetteMode ? 0.075f : 0.045f;
+                const auto dc = std::tanh (asymmetry * fuzzDrive);
+                const auto fuzzy = (std::tanh ((x + asymmetry) * fuzzDrive) - dc)
+                                 / fuzzDrive;
+                x = juce::jmap (fuzzAmount * (cassetteMode ? 0.15f : 0.11f), x, fuzzy);
+            }
+
             auto& lp = toneState[static_cast<size_t> (channel)];
             lp += toneCoefficient * (x - lp);
             auto& bass = bassState[static_cast<size_t> (channel)];
@@ -154,47 +235,65 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
             // Preserve body as Tone moves bright, while Age adds an audible
             // head-bump and increasingly worn, softened character.
             const auto brightBody = juce::jlimit (0.0f, 1.0f, (toneValue - 0.52f) / 0.48f);
+            const auto darkBody = std::pow (juce::jlimit (0.0f, 1.0f,
+                                                          (0.60f - toneValue) / 0.60f), 1.15f);
             const auto driveBody = distortionAmount;
             const auto midBody = tapeAmount * (cassetteMode ? 0.085f : 0.0f)
                                + brightBody * (cassetteMode ? 0.16f : 0.11f)
-                               + driveBody * (cassetteMode ? 0.13f : 0.13f);
+                               + driveBody * (cassetteMode ? 0.13f : 0.13f)
+                               + darkBody * characterAmount * (cassetteMode ? 0.13f : 0.10f);
             const auto ageBump = effectiveAge * (cassetteMode ? 0.14f : 0.10f);
             const auto driveBass = driveBody * (cassetteMode ? 0.16f : 0.20f);
             x = lp + mids * midBody
                    + bass * (tapeAmount * (cassetteMode ? 0.075f : 0.085f)
-                           + ageBump + driveBass);
+                           + ageBump + driveBass
+                           + darkBody * characterAmount * (cassetteMode ? 0.22f : 0.17f));
 
             // There is no dry/wet summation here. MIX morphs the strength of
             // this single calibrated tape path, so its harmonics belong to the
             // note instead of sounding like a second distorted track.
             auto compressed = tapeAmount <= 0.000001f ? dry : x;
-            auto& detectorLow = detectorLowState[static_cast<size_t> (channel)];
-            detectorLow += detectorLowCoefficient * (compressed - detectorLow);
-            const auto detectorSample = compressed - detectorLow * 0.76f;
-            const auto level = std::abs (detectorSample);
-            auto& env = envelope[static_cast<size_t> (channel)];
-            env = level > env ? attack * env + (1.0f - attack) * level
-                              : release * env + (1.0f - release) * level;
-            const auto envelopeDb = juce::Decibels::gainToDecibels (env, -120.0f);
-            const auto overDb = envelopeDb - thresholdDb;
-            float reductionDb = 0.0f;
-            if (overDb >= kneeDb * 0.5f)
-                reductionDb = overDb * (1.0f - 1.0f / ratio);
-            else if (overDb > -kneeDb * 0.5f)
+            if (effectiveComp > 0.000001f)
             {
-                const auto kneePosition = overDb + kneeDb * 0.5f;
-                reductionDb = (1.0f - 1.0f / ratio)
-                            * kneePosition * kneePosition / (2.0f * kneeDb);
+                auto& detectorLow = detectorLowState[static_cast<size_t> (channel)];
+                detectorLow += detectorLowCoefficient * (compressed - detectorLow);
+                const auto detectorSample = compressed - detectorLow * 0.76f;
+                const auto level = std::abs (detectorSample);
+                auto& env = envelope[static_cast<size_t> (channel)];
+                env = level > env ? attack * env + (1.0f - attack) * level
+                                  : release * env + (1.0f - release) * level;
+                const auto envelopeDb = juce::Decibels::gainToDecibels (env, -120.0f);
+                const auto overDb = envelopeDb - thresholdDb;
+                float reductionDb = 0.0f;
+                if (overDb >= kneeDb * 0.5f)
+                    reductionDb = overDb * (1.0f - 1.0f / ratio);
+                else if (overDb > -kneeDb * 0.5f)
+                {
+                    const auto kneePosition = overDb + kneeDb * 0.5f;
+                    reductionDb = (1.0f - 1.0f / ratio)
+                                * kneePosition * kneePosition / (2.0f * kneeDb);
+                }
+                const auto makeupActivity = juce::jlimit (0.0f, 1.0f,
+                                                           (envelopeDb + 72.0f) / 30.0f);
+                compressed *= juce::Decibels::decibelsToGain (
+                    makeupDb * makeupActivity - reductionDb + effectiveComp * makeupActivity * 2.0f);
+                compressed += detectorLow * effectiveComp * 0.16f;
             }
-            const auto makeupActivity = juce::jlimit (0.0f, 1.0f,
-                                                       (envelopeDb + 72.0f) / 30.0f);
-            compressed *= juce::Decibels::decibelsToGain (
-                makeupDb * makeupActivity - reductionDb + effectiveComp * makeupActivity * 2.0f);
-            compressed += detectorLow * effectiveComp * 0.16f;
+            // A calibrated recorder gets denser as it is driven, but it should
+            // not become quieter. Add restrained post-tape level lift mostly
+            // in the upper Drive range, after compression gain reduction.
+            const auto driveLiftDb = std::pow (tapeAmount, 1.45f)
+                                   * (cassetteMode ? 3.1f : 2.7f);
+            compressed *= juce::Decibels::decibelsToGain (driveLiftDb);
             buffer.setSample (channel, sample, compressed);
         }
-        writeIndex = (writeIndex + 1) % wowBuffer.getNumSamples();
-        lfoPhase += juce::MathConstants<float>::twoPi * wowRate / static_cast<float> (sampleRate);
-        if (lfoPhase >= juce::MathConstants<float>::twoPi) lfoPhase -= juce::MathConstants<float>::twoPi;
+        if (ageProcessingEnabled)
+        {
+            writeIndex = (writeIndex + 1) % wowBuffer.getNumSamples();
+            validSamples = juce::jmin (validSamples + 1, wowBuffer.getNumSamples());
+            lfoPhase += juce::MathConstants<float>::twoPi * wowRate / static_cast<float> (processingRate);
+            if (lfoPhase >= juce::MathConstants<float>::twoPi)
+                lfoPhase -= juce::MathConstants<float>::twoPi;
+        }
     }
 }

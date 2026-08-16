@@ -233,6 +233,156 @@ holds nominal loudness. Studio and Cassette use clearly different calibration,
 bias, bandwidth and memory curves, and transport displacement occurs only when
 AGE is raised.
 
+Checkpoint v0.37 completes the planned feature set. It replaces the duplicate
+Guitar Room factory entry with Tight Guitar Room and adds four more adventurous
+factory sounds: Purple Motion, Neon Slap, Tape Mirage and Doubled Glass. These
+presets deliberately explore the different echo patterns and spring models.
+Chorus gains a single press-and-play FLANGER switch with a short click-free
+transition. A lightweight stereo DOUBLER beside HI CUT creates two humanised
+copies with different short offsets; new note/chord transients gently refresh
+those offsets while smoothing prevents delay-tap clicks. Its DOUBLER wordmark
+is also its bypass switch and darkens when off. Both new effects are
+host-automatable and stored in presets. From this version onward, development
+focuses on presets, DSP refinement, CPU efficiency and reliability rather than
+adding more controls.
+
+Checkpoint v0.38 moves FLANGER into the top control area of the Chorus pedal
+and gives it a compact illuminated-switch treatment. The Doubler is rebuilt as
+a stable ADT-style stereo thickener: its left and right copies use fixed,
+different micro-delay offsets, while the knob controls only their level. It no
+longer re-randomizes delay time on transients and contains no cyclic modulation,
+removing the audible pitch wobble while also reducing CPU work.
+
+Checkpoint v0.39 redesigns the one-button Flanger from published tape-flanging
+principles: a much shorter swept delay, stronger negative feedback and a near-
+equal dry/delayed balance create clearly audible moving comb-filter notches.
+Its new amber hardware LED switch sits below the Chorus knobs and above the
+wordmark. Doubler offsets are shortened to 6.2 ms and 9.4 ms so they thicken
+instead of reading as slap delay. NOISE GATE is now a clickable bypass wordmark.
+All creative modules are skipped at processor level while bypassed and reset
+once on shutdown, including convolution and feedback memory, for lower idle CPU.
+The five footer controls are grouped more tightly with exactly equal spacing.
+
+Checkpoint v0.40 makes the neutral signal path genuinely transparent: unity
+input/output gain and the 20 Hz/20 kHz filter endpoints no longer run DSP, and
+the global dry/wet loop is skipped once fully on. This removes the last always-
+active phase-rotating processing from an all-off setup. Input/output meters are
+30% longer. FLANGER is larger, while Echo SYNC now uses the same generated amber
+LED interaction and styling. The tighter footer retains equal 215 px spacing.
+Fresh instances and Clean Studio now start with Noise Gate and Doubler bypassed;
+factory presets that intentionally use Doubler explicitly enable it.
+
+Checkpoint v0.41 is optimization-only. Spring uses capped 48 kHz stereo IR
+assets and non-uniform convolution, skips zero Dwell/Drip work, and retains its
+quantized decay cache. Chorus replaces trigonometric triangle generation and
+reuses stereo LFO values. Echo caches tone/sync calculations and skips zero
+Wobble/Drive work. Tape bypasses neutral processing and skips zero compression
+and Age transport work. Raw parameter pointers are cached at construction.
+Delay-memory resets now use validity counters instead of clearing large buffers
+on the audio thread. Preset recall and Echo bypass fade before invalidating the
+tail, fixing the exposed high-Mix click. A Release DSP matrix and Instruments
+procedure are included in `PROFILING_V0.41.md`. Input/output meters are 25%
+longer. Checkpoint v0.42 removes Echo's phase-offset stereo wobble and upgrades
+its modulated reads to four-point interpolation, preventing alternating L/R
+clicks at high Mix. Tape Drive keeps its v0.41 response and adds a restrained
+fuzzy magnetic-overload edge only above roughly 78%. The Tape type, Flanger,
+Echo type, Sync and Spring type controls now share one aligned 112 x 32 row.
+
+Checkpoint v0.43 places a one-sample median de-clicker before the Echo output
+and feedback path, eliminating isolated impulses without low-pass filtering the
+repeats. Doubler becomes a true dual-voice ADT treatment with unequal short
+delays, higher copy level and independent slow micro-pitch drift. Flanger gains
+deeper swept delay, stronger bounded resonance and a wetter output balance.
+FLANGER and SYNC have larger LED artwork and lettering.
+
+Checkpoint v0.44 removes the temporary Echo de-clicker and corrects the root
+cause: the non-integer flutter multiplier jumped whenever the slow LFO wrapped.
+Slow wobble and flutter now use independent continuous phases. Flanger has a
+faster 0.65–2.5 Hz range and a mostly shared stereo sweep, reducing auto-pan.
+LOW CUT and HI CUT sit closer together, and the full-length meters no longer
+touch neighboring knobs.
+
+Checkpoint v0.45 keeps the v0.44 Echo implementation unchanged. Flanger has a
+lower wet floor, less resonance and more direct level to preserve midrange.
+Doubler's dual ADT voices move to 8.5/15.5 ms and gain more level for an obvious
+but still non-slap widening effect. A taller footer places DOUBLER beneath its
+knob. Tape's upper Drive range uses a slightly smaller fuzz blend and adds
+2.7–3.1 dB of progressive post-tape lift at the extreme endpoint.
+
+Checkpoint v0.46 keeps Echo unchanged and rebuilds the footer as six equal-size
+controls, all labeled above their knobs. Flanger preserves more direct body and
+reduces its stereo phase separation/crossfeed again. Five new factory presets—
+Chrome Funk, Beef Tape, Dirty Dimension, Purple Jet and Broken Cassette—expand
+the gritty, beefy and Flanger-focused side of Rockalizer.
+
+Checkpoint v0.47 is a layout-only refinement. The bottom rack plate is shorter
+and lower, every knob is contained within it, and the meters move into the row:
+Input meter between Noise Gate/Input and Output meter between Doubler/Output.
+Echo Type shifts slightly toward Sync. Audio processing is unchanged.
+
+Checkpoint v0.48 refines the header and performance controls. The Rockalizer
+logo is larger and shifted right, the bottom-row knobs are vertically centred,
+and New/Save/Delete use compact plus, disk and trash icons. Delete is available
+only for user presets. Flanger now has two mutually exclusive hardware-style
+buttons: Mode I is warmer and restrained, while Mode II is faster, deeper and
+more aggressive. Older presets using the original Flanger switch load as Mode I.
+
+Checkpoint v0.49 introduces dedicated transparent Flanger hardware artwork with
+a visible FLANGER wordmark and interactive Mode I/II buttons. It also shifts the
+Rockalizer logo farther right, adds a larger gap above the shorter bottom plate,
+centres its knobs lower inside the plate, and slightly strengthens Chorus at low
+Mix values without altering the established Echo processing.
+
+Checkpoint v0.50 fixes the Flanger artwork paint order, moves the Rockalizer
+logo farther right, and makes the two Flanger switches combinable. Button I is
+Mode I, button II is Mode II, and illuminating both activates the wetter,
+faster and more aggressive Mode III. Echo processing remains unchanged.
+
+Checkpoint v0.51 removes the rectangular Flanger-state shadow by limiting state
+shading to the indicator lamps. Spring Mix now follows an insert-oriented blend:
+the wet tail grows into a denser wash while a controlled direct-signal floor
+preserves guitar body and attack at very high Mix settings.
+
+Checkpoint v0.52 aligns Flanger state shading with the real artwork lamps and
+softens the strip into the Chorus pedal. Spring gains a subtle cross-coupled
+mechanical tail for a less obvious fade. Global bypass now visually darkens all
+four complete pedals. Doubler preserves the original stereo signal and uses its
+single Amount control as a macro for added-voice level, separation and subtle
+timing/pitch variation. The Rockalizer logo moves down and right.
+
+Checkpoint v0.53 removes the troublesome Flanger strip artwork completely.
+Modes I and II now use the same code-rendered LED control as Echo Sync, while
+pressing both still selects the stronger Mode III. Doubler is replaced by a
+single-control Fender-inspired bias Tremolo: a warm rounded pulse at a classic
+amp speed, with a retained dry-level floor and identical modulation on left and
+right so it cannot autopan. Tremolo defaults to bypassed.
+
+Checkpoint v0.54 slows the Fender-style Tremolo to 3.2 Hz, tightens the
+FLANGER wordmark against its Mode buttons, and makes ComboBox and LED-button
+typography respond to smaller editor sizes. The complete factory bank is
+retuned for the latest DSP, including explicit Flanger modes and more restrained
+Echo/Spring levels. Midnight Tremolo, Brownface Pulse and Tremolo Dream add
+three purpose-built Tremolo presets.
+
+Checkpoint v0.55 gives the Flanger wordmark breathing room and recalibrates
+Chorus/Flanger stereo modulation for stronger mono compatibility: Chorus uses
+a controlled 129.6-degree stereo phase relationship while Flanger converges
+near a shared sweep with reduced pitch excursion. Tape adds Off, 2x and 4x
+oversampling quality choices, defaulting to 2x. Spring now feeds Dwell and
+transient-sensitive Drip into the convolution input, applies a smooth taper to
+shortened IRs, and uses a quieter damped mechanical bridge for a softer decay.
+
+Checkpoint v0.56 moves Tape oversampling into Options and makes the Rockalizer
+logo open a dedicated About overlay with its own close control. Chorus becomes
+a stronger three-voice ensemble: staggered Dimension-style taps, gentle
+BBD/compander rounding inspired by CE-1 character, a more immediate JUNO-like
+mix taper, and substantially greater wet authority at 100%. Spring follows with
+a slower input-aware release, allowing the convolved tail to bloom behind the
+modulated guitar while preserving the initial pick attack.
+
+Checkpoint v0.56.1 fixes the JUCE close-icon line construction that prevented
+v0.56 from compiling on macOS and removes the new Tape channel-count warnings.
+
 ## macOS build
 
 From Terminal, open this folder and run:
@@ -263,3 +413,21 @@ auval -v aufx Rkzr Nath
 
 Open Cubase, rescan VST3 plug-ins if necessary, insert Rockalizer on an audio
 track, and confirm that audio passes through unchanged.
+
+## v0.56.2 build hotfix
+
+This checkpoint fixes the ambiguous JUCE `drawText` overload in the About
+panel by explicitly using floating-point bounds, and cleans nearby conversions.
+
+## v0.57.0 DSP refinement
+
+- Keeps the original Rockalizer artwork but makes its About hit target fully
+  invisible, including hover, pressed, and keyboard-focus states.
+- Smooths the chorus modulation with continuous sine-derived voices, retunes
+  the three delay taps, reduces metallic feedback, and strengthens the warm
+  stereo ensemble balance.
+- Adds restrained low-mid and bass body as Tape Tone is turned below neutral.
+- Caches Chorus filter coefficients and its fixed crossover coefficient so
+  unchanged parameters do not repeat unnecessary exponential calculations.
+- Caches unchanged Echo tone and Spring tone coefficients, plus Spring envelope
+  timing constants, reducing repeated work in normal real-time processing.

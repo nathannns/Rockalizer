@@ -2,3 +2,7 @@
 /.DS_Store
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
+
+build/
+build-*/
+.DS_Store

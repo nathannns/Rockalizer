@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Rockalizer VERSION 0.36.0 LANGUAGES C CXX)
+project(Rockalizer VERSION 0.57.0 LANGUAGES C CXX)
 
 include(FetchContent)
 
@@ -17,6 +17,7 @@ juce_add_binary_data(RockalizerData SOURCES
     Resources/Images/knob_v1.png
     Resources/Images/plugin_background.png
     Resources/Images/rockalizer_logo_v1.png
+    Resources/Images/flanger_led_v1.png
     Resources/Images/logo_tape_v3.png
     Resources/Images/logo_chorus_v2.png
     Resources/Images/logo_echo_v2.png
@@ -25,13 +26,13 @@ juce_add_binary_data(RockalizerData SOURCES
     Resources/Images/pedal_chorus_v2.png
     Resources/Images/pedal_echo_v2.png
     Resources/Images/pedal_spring_v2.png
-    Resources/ImpulseResponses/Clean/spring_gbsr_clean.wav
-    Resources/ImpulseResponses/Clean/spring_deluxe_clean.wav
-    Resources/ImpulseResponses/Clean/spring_space_clean.wav
-    Resources/ImpulseResponses/Clean/spring_9100_clean.wav
-    Resources/ImpulseResponses/Clean/spring_echomixer_clean.wav
-    Resources/ImpulseResponses/Clean/spring_schaller_clean.wav
-    Resources/ImpulseResponses/Clean/spring_pioneer_clean.wav
+    Resources/ImpulseResponses/Optimized/spring_gbsr_clean.wav
+    Resources/ImpulseResponses/Optimized/spring_deluxe_clean.wav
+    Resources/ImpulseResponses/Optimized/spring_space_clean.wav
+    Resources/ImpulseResponses/Optimized/spring_9100_clean.wav
+    Resources/ImpulseResponses/Optimized/spring_echomixer_clean.wav
+    Resources/ImpulseResponses/Optimized/spring_schaller_clean.wav
+    Resources/ImpulseResponses/Optimized/spring_pioneer_clean.wav
 )
 
 juce_add_plugin(Rockalizer
@@ -69,6 +70,8 @@ target_sources(Rockalizer
         Source/DSP/TapeModule.h
         Source/DSP/SpringModule.cpp
         Source/DSP/SpringModule.h
+        Source/DSP/TremoloModule.cpp
+        Source/DSP/TremoloModule.h
 )
 
 target_compile_features(Rockalizer PRIVATE cxx_std_17)
@@ -90,3 +93,25 @@ target_link_libraries(Rockalizer
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags
 )
+
+option(ROCKALIZER_BUILD_TESTS "Build Rockalizer DSP validation tests" ON)
+if(ROCKALIZER_BUILD_TESTS)
+    juce_add_console_app(RockalizerDSPTests PRODUCT_NAME "Rockalizer DSP Tests")
+    juce_generate_juce_header(RockalizerDSPTests)
+    target_sources(RockalizerDSPTests PRIVATE
+        Tests/DspValidation.cpp
+        Source/DSP/ChorusModule.cpp Source/DSP/ChorusModule.h
+        Source/DSP/EchoModule.cpp Source/DSP/EchoModule.h
+        Source/DSP/TapeModule.cpp Source/DSP/TapeModule.h
+        Source/DSP/TremoloModule.cpp Source/DSP/TremoloModule.h
+    )
+    target_include_directories(RockalizerDSPTests PRIVATE Source Source/DSP)
+    target_compile_features(RockalizerDSPTests PRIVATE cxx_std_17)
+    target_link_libraries(RockalizerDSPTests PRIVATE
+        juce::juce_audio_basics
+        juce::juce_audio_formats
+        juce::juce_dsp
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_warning_flags
+    )
+endif()

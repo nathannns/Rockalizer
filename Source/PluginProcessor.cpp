@@ -7,9 +7,26 @@ RockalizerAudioProcessor::RockalizerAudioProcessor()
                           .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       parameters (*this, nullptr, "ROCKALIZER_STATE", createParameterLayout())
 {
+    cacheAudioParameters();
     // The header initially names Clean Studio, so a fresh instance must start
     // with that preset's values rather than unrelated parameter defaults.
     loadPreset (1);
+}
+
+void RockalizerAudioProcessor::cacheAudioParameters()
+{
+    parameterCache.reserve (static_cast<size_t> (parameters.state.getNumChildren()));
+    for (auto* parameter : getParameters())
+        if (auto* identified = dynamic_cast<juce::AudioProcessorParameterWithID*> (parameter))
+            if (auto* raw = parameters.getRawParameterValue (identified->paramID))
+                parameterCache.emplace (identified->paramID.toStdString(), raw);
+}
+
+float RockalizerAudioProcessor::readParameter (const char* parameterID) const noexcept
+{
+    const auto found = parameterCache.find (parameterID);
+    jassert (found != parameterCache.end());
+    return found != parameterCache.end() ? found->second->load (std::memory_order_relaxed) : 0.0f;
 }
 
 juce::File RockalizerAudioProcessor::getUserPresetDirectory() const
@@ -21,7 +38,11 @@ juce::File RockalizerAudioProcessor::getUserPresetDirectory() const
 juce::StringArray RockalizerAudioProcessor::getPresetNames() const
 {
     juce::StringArray names { "-- INIT --", "Clean Studio", "Warm Cassette", "Wide Indie", "Space Echo",
-                              "Vintage Spring", "Lo-Fi Dream", "Vocal Ambience", "Guitar Room" };
+                              "Vintage Spring", "Lo-Fi Dream", "Vocal Ambience", "Tight Guitar Room",
+                              "Purple Motion", "Neon Slap", "Tape Mirage", "Crystal Dimension",
+                              "Chrome Funk", "Beef Tape", "Dirty Dimension", "Purple Jet",
+                              "Broken Cassette", "Midnight Tremolo", "Brownface Pulse",
+                              "Tremolo Dream" };
     juce::Array<juce::File> files;
     getUserPresetDirectory().findChildFiles (files, juce::File::findFiles, false, "*.xml");
     juce::StringArray userNames;
@@ -58,8 +79,10 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
                                          "tapeDrive", "tapeComp", "tapeTone", "tapeAge", "tapeMix",
                                          "chorusDepth", "chorusWidth", "chorusMix",
                                          "echoRepeats", "echoWobble", "echoDrive", "echoMix",
-                                         "springDecay", "springDwell", "springTone", "springDrip", "springMix" })
+                                         "springDecay", "springDwell", "springTone", "springDrip", "springMix",
+                                         "tremolo" })
             set (parameterID, 0.0f);
+        set ("doubler", 0.0f);
         set ("chorusTone", 1000.0f);
         set ("chorusRate", 0.05f);
         set ("echoTone", 1200.0f);
@@ -77,52 +100,142 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             set ("tapeType", 0.0f); set ("tapeDrive", 12.0f); set ("tapeComp", 20.0f);
             set ("tapeMix", 35.0f); set ("chorusRate", 0.30f); set ("chorusDepth", 30.0f);
             set ("chorusWidth", 76.0f); set ("chorusMix", 12.0f); set ("echoMix", 8.0f);
-            set ("springMix", 10.0f); break;
+            set ("springDecay", 26.0f); set ("springMix", 8.0f); break;
         case 1: // Warm Cassette
             set ("tapeType", 1.0f); set ("tapeDrive", 34.0f); set ("tapeComp", 48.0f);
             set ("tapeTone", 42.0f); set ("tapeAge", 45.0f); set ("tapeMix", 62.0f);
             set ("chorusRate", 0.24f); set ("chorusDepth", 34.0f); set ("chorusWidth", 78.0f);
-            set ("chorusMix", 15.0f); set ("echoMix", 10.0f); set ("springMix", 8.0f); break;
+            set ("chorusMix", 14.0f); set ("echoMix", 7.0f); set ("springMix", 7.0f); break;
         case 2: // Wide Indie
             set ("tapeDrive", 17.0f); set ("tapeMix", 38.0f); set ("chorusRate", 0.38f);
             set ("chorusDepth", 58.0f); set ("chorusWidth", 94.0f); set ("chorusMix", 40.0f);
-            set ("echoTime", 420.0f); set ("echoRepeats", 22.0f); set ("echoMix", 16.0f);
-            set ("springType", 1.0f); set ("springMix", 18.0f); break;
+            set ("echoTime", 420.0f); set ("echoRepeats", 20.0f); set ("echoMix", 12.0f);
+            set ("springType", 1.0f); set ("springMix", 15.0f); break;
         case 3: // Space Echo
             set ("tapeDrive", 22.0f); set ("chorusRate", 0.22f); set ("chorusDepth", 26.0f);
             set ("chorusWidth", 74.0f); set ("chorusMix", 10.0f);
             set ("echoPattern", 3.0f); set ("echoTime", 465.0f);
             set ("echoRepeats", 36.0f); set ("echoTone", 4800.0f); set ("echoWobble", 38.0f);
-            set ("echoDrive", 20.0f); set ("echoMix", 36.0f); set ("springType", 2.0f);
-            set ("springDecay", 48.0f); set ("springMix", 22.0f); break;
+            set ("echoDrive", 18.0f); set ("echoMix", 24.0f); set ("springType", 2.0f);
+            set ("springDecay", 44.0f); set ("springMix", 18.0f); break;
         case 4: // Vintage Spring
             set ("tapeType", 1.0f); set ("tapeDrive", 21.0f); set ("tapeMix", 42.0f);
             set ("chorusRate", 0.20f); set ("chorusDepth", 24.0f); set ("chorusWidth", 70.0f);
             set ("chorusMix", 9.0f); set ("echoMix", 12.0f); set ("springType", 1.0f);
             set ("springDecay", 55.0f); set ("springDwell", 52.0f); set ("springTone", 58.0f);
-            set ("springDrip", 62.0f); set ("springMix", 42.0f); break;
+            set ("springDrip", 54.0f); set ("springMix", 34.0f); break;
         case 5: // Lo-Fi Dream
             set ("tapeType", 1.0f); set ("tapeDrive", 42.0f); set ("tapeComp", 56.0f);
             set ("tapeTone", 32.0f); set ("tapeAge", 72.0f); set ("tapeMix", 70.0f);
             set ("chorusRate", 0.26f); set ("chorusDepth", 64.0f); set ("chorusWidth", 92.0f);
             set ("chorusMix", 38.0f);
             set ("echoPattern", 4.0f); set ("echoTime", 560.0f); set ("echoRepeats", 36.0f);
-            set ("echoTone", 3300.0f); set ("echoMix", 28.0f); set ("highCut", 9800.0f);
-            set ("springType", 4.0f); set ("springMix", 24.0f); break;
+            set ("echoTone", 3300.0f); set ("echoMix", 20.0f); set ("highCut", 9800.0f);
+            set ("springType", 4.0f); set ("springMix", 20.0f); break;
         case 6: // Vocal Ambience
             set ("tapeDrive", 11.0f); set ("tapeComp", 28.0f); set ("tapeMix", 28.0f);
             set ("chorusRate", 0.24f); set ("chorusDepth", 28.0f);
             set ("chorusWidth", 80.0f); set ("chorusMix", 14.0f);
             set ("echoPattern", 1.0f); set ("echoTime", 310.0f); set ("echoRepeats", 18.0f);
-            set ("echoMix", 14.0f); set ("springType", 0.0f); set ("springDecay", 34.0f);
-            set ("springMix", 16.0f); set ("lowCut", 75.0f); break;
-        case 7: // Guitar Room
+            set ("echoMix", 10.0f); set ("springType", 0.0f); set ("springDecay", 31.0f);
+            set ("springMix", 13.0f); set ("lowCut", 75.0f); break;
+        case 7: // Tight Guitar Room
             set ("tapeDrive", 19.0f); set ("tapeComp", 34.0f); set ("tapeMix", 44.0f);
             set ("chorusRate", 0.18f); set ("chorusDepth", 20.0f);
             set ("chorusWidth", 68.0f); set ("chorusMix", 8.0f);
             set ("echoTime", 125.0f); set ("echoRepeats", 12.0f);
-            set ("echoMix", 9.0f); set ("springType", 5.0f); set ("springDecay", 25.0f);
-            set ("springDwell", 35.0f); set ("springMix", 22.0f); set ("lowCut", 45.0f); break;
+            set ("echoMix", 7.0f); set ("springType", 5.0f); set ("springDecay", 22.0f);
+            set ("springDwell", 28.0f); set ("springMix", 18.0f); set ("lowCut", 45.0f); break;
+        case 8: // Purple Motion
+            set ("tapeDrive", 28.0f); set ("tapeComp", 32.0f); set ("tapeMix", 54.0f);
+            set ("chorusFlangerMode", 1.0f); set ("chorusRate", 0.22f); set ("chorusDepth", 58.0f);
+            set ("chorusWidth", 42.0f); set ("chorusMix", 25.0f);
+            set ("echoPattern", 2.0f); set ("echoTime", 330.0f); set ("echoRepeats", 24.0f);
+            set ("echoTone", 5200.0f); set ("echoMix", 15.0f); set ("springType", 5.0f);
+            set ("springDecay", 32.0f); set ("springMix", 18.0f); break;
+        case 9: // Neon Slap
+            set ("tapeDrive", 20.0f); set ("tapeMix", 40.0f);
+            set ("chorusRate", 0.18f); set ("chorusDepth", 24.0f); set ("chorusWidth", 88.0f);
+            set ("chorusMix", 18.0f); set ("echoPattern", 1.0f); set ("echoTime", 92.0f);
+            set ("echoRepeats", 8.0f); set ("echoTone", 7600.0f); set ("echoMix", 13.0f);
+            set ("springType", 6.0f); set ("springDecay", 20.0f); set ("springMix", 10.0f); break;
+        case 10: // Tape Mirage
+            set ("tapeType", 1.0f); set ("tapeDrive", 46.0f); set ("tapeComp", 44.0f);
+            set ("tapeTone", 38.0f); set ("tapeAge", 62.0f); set ("tapeMix", 72.0f);
+            set ("chorusRate", 0.15f); set ("chorusDepth", 52.0f); set ("chorusWidth", 90.0f);
+            set ("chorusMix", 28.0f); set ("echoPattern", 4.0f); set ("echoTime", 570.0f);
+            set ("echoRepeats", 28.0f); set ("echoWobble", 50.0f); set ("echoDrive", 18.0f);
+            set ("echoMix", 22.0f); set ("springType", 4.0f); set ("springDecay", 42.0f);
+            set ("springDwell", 38.0f); set ("springMix", 28.0f); set ("highCut", 9200.0f); break;
+        case 11: // Crystal Dimension
+            set ("tapeDrive", 14.0f); set ("tapeTone", 68.0f); set ("tapeMix", 32.0f);
+            set ("chorusRate", 0.12f); set ("chorusDepth", 34.0f);
+            set ("chorusWidth", 92.0f); set ("chorusMix", 22.0f); set ("echoPattern", 3.0f);
+            set ("echoTime", 245.0f); set ("echoRepeats", 18.0f); set ("echoTone", 8800.0f);
+            set ("echoMix", 12.0f); set ("springType", 1.0f); set ("springDecay", 28.0f);
+            set ("springTone", 72.0f); set ("springMix", 14.0f); break;
+        case 12: // Chrome Funk
+            set ("tapeType", 0.0f); set ("tapeDrive", 58.0f); set ("tapeComp", 38.0f);
+            set ("tapeTone", 56.0f); set ("tapeMix", 64.0f); set ("chorusFlangerMode", 2.0f);
+            set ("chorusRate", 1.55f); set ("chorusDepth", 64.0f); set ("chorusWidth", 30.0f);
+            set ("chorusMix", 25.0f); set ("echoPattern", 1.0f); set ("echoTime", 118.0f);
+            set ("echoRepeats", 12.0f); set ("echoMix", 10.0f); set ("springType", 6.0f);
+            set ("springDecay", 18.0f); set ("springMix", 9.0f); break;
+        case 13: // Beef Tape
+            set ("tapeType", 0.0f); set ("tapeDrive", 76.0f); set ("tapeComp", 48.0f);
+            set ("tapeTone", 48.0f); set ("tapeAge", 18.0f); set ("tapeMix", 88.0f);
+            set ("chorusRate", 0.18f); set ("chorusDepth", 22.0f); set ("chorusWidth", 46.0f);
+            set ("chorusMix", 6.0f); set ("echoTime", 105.0f); set ("echoRepeats", 7.0f);
+            set ("echoMix", 7.0f); set ("springType", 5.0f); set ("springDecay", 20.0f);
+            set ("springDwell", 30.0f); set ("springMix", 12.0f); set ("lowCut", 32.0f); break;
+        case 14: // Dirty Dimension
+            set ("tapeType", 1.0f); set ("tapeDrive", 68.0f); set ("tapeComp", 42.0f);
+            set ("tapeTone", 44.0f); set ("tapeAge", 35.0f); set ("tapeMix", 76.0f);
+            set ("chorusFlangerMode", 1.0f); set ("chorusRate", 0.95f); set ("chorusDepth", 48.0f);
+            set ("chorusWidth", 20.0f); set ("chorusMix", 21.0f);
+            set ("echoPattern", 2.0f); set ("echoTime", 275.0f);
+            set ("echoRepeats", 18.0f); set ("echoDrive", 22.0f); set ("echoMix", 14.0f);
+            set ("springType", 4.0f); set ("springDecay", 24.0f); set ("springMix", 12.0f); break;
+        case 15: // Purple Jet
+            set ("tapeType", 0.0f); set ("tapeDrive", 64.0f); set ("tapeComp", 28.0f);
+            set ("tapeTone", 52.0f); set ("tapeMix", 70.0f); set ("chorusFlangerMode", 3.0f);
+            set ("chorusRate", 2.10f); set ("chorusDepth", 78.0f); set ("chorusWidth", 20.0f);
+            set ("chorusMix", 28.0f); set ("echoPattern", 3.0f); set ("echoTime", 360.0f);
+            set ("echoRepeats", 25.0f); set ("echoTone", 4600.0f); set ("echoWobble", 20.0f);
+            set ("echoDrive", 26.0f); set ("echoMix", 18.0f); set ("springType", 2.0f);
+            set ("springDecay", 28.0f); set ("springMix", 15.0f); break;
+        case 16: // Broken Cassette
+            set ("tapeType", 1.0f); set ("tapeDrive", 82.0f); set ("tapeComp", 52.0f);
+            set ("tapeTone", 34.0f); set ("tapeAge", 76.0f); set ("tapeMix", 92.0f);
+            set ("chorusRate", 0.24f); set ("chorusDepth", 46.0f); set ("chorusWidth", 58.0f);
+            set ("chorusMix", 18.0f); set ("echoPattern", 4.0f); set ("echoTime", 510.0f);
+            set ("echoRepeats", 28.0f); set ("echoTone", 3000.0f); set ("echoWobble", 48.0f);
+            set ("echoDrive", 38.0f); set ("echoMix", 22.0f); set ("springType", 4.0f);
+            set ("springDecay", 34.0f); set ("springDwell", 38.0f); set ("springMix", 17.0f);
+            set ("highCut", 8600.0f); break;
+        case 17: // Midnight Tremolo
+            set ("tapeType", 0.0f); set ("tapeDrive", 24.0f); set ("tapeComp", 24.0f);
+            set ("tapeTone", 52.0f); set ("tapeMix", 46.0f); set ("tremoloOn", 1.0f);
+            set ("tremolo", 38.0f); set ("chorusRate", 0.20f); set ("chorusDepth", 28.0f);
+            set ("chorusWidth", 72.0f); set ("chorusMix", 12.0f); set ("echoTime", 285.0f);
+            set ("echoRepeats", 15.0f); set ("echoMix", 10.0f); set ("springType", 1.0f);
+            set ("springDecay", 28.0f); set ("springMix", 14.0f); break;
+        case 18: // Brownface Pulse
+            set ("tapeType", 0.0f); set ("tapeDrive", 38.0f); set ("tapeComp", 32.0f);
+            set ("tapeTone", 48.0f); set ("tapeMix", 58.0f); set ("tremoloOn", 1.0f);
+            set ("tremolo", 62.0f); set ("chorusDepth", 0.0f); set ("chorusMix", 0.0f);
+            set ("echoTime", 115.0f); set ("echoRepeats", 8.0f); set ("echoMix", 7.0f);
+            set ("springType", 5.0f); set ("springDecay", 24.0f); set ("springDwell", 30.0f);
+            set ("springMix", 18.0f); break;
+        case 19: // Tremolo Dream
+            set ("tapeType", 1.0f); set ("tapeDrive", 30.0f); set ("tapeComp", 30.0f);
+            set ("tapeTone", 43.0f); set ("tapeAge", 30.0f); set ("tapeMix", 54.0f);
+            set ("tremoloOn", 1.0f); set ("tremolo", 48.0f); set ("chorusRate", 0.16f);
+            set ("chorusDepth", 46.0f); set ("chorusWidth", 84.0f); set ("chorusMix", 22.0f);
+            set ("echoPattern", 4.0f); set ("echoTime", 480.0f); set ("echoRepeats", 22.0f);
+            set ("echoTone", 3900.0f); set ("echoWobble", 22.0f); set ("echoMix", 16.0f);
+            set ("springType", 4.0f); set ("springDecay", 38.0f); set ("springMix", 20.0f);
+            set ("highCut", 11000.0f); break;
         default: break;
     }
 }
@@ -135,11 +248,11 @@ bool RockalizerAudioProcessor::loadPreset (int presetIndex)
 
     // Input connector selection belongs to the user's interface setup, not to
     // the sound preset. Keep it unchanged while factory or user presets load.
-    const auto input1WasOn = parameters.getRawParameterValue ("input1On")->load() > 0.5f;
-    const auto input2WasOn = parameters.getRawParameterValue ("input2On")->load() > 0.5f;
-    const auto inputLevelWas = parameters.getRawParameterValue ("inputLevel")->load();
+    const auto input1WasOn = readParameter ("input1On") > 0.5f;
+    const auto input2WasOn = readParameter ("input2On") > 0.5f;
+    const auto inputLevelWas = readParameter ("inputLevel");
 
-    if (presetIndex < 9)
+    if (presetIndex < factoryPresetCount)
         loadFactoryPreset (presetIndex);
     else
     {
@@ -191,6 +304,22 @@ bool RockalizerAudioProcessor::saveUserPreset (const juce::String& presetName)
     return false;
 }
 
+bool RockalizerAudioProcessor::deleteUserPreset (int presetIndex)
+{
+    const auto names = getPresetNames();
+    if (presetIndex < factoryPresetCount || ! juce::isPositiveAndBelow (presetIndex, names.size()))
+        return false;
+
+    const auto file = getUserPresetDirectory().getChildFile (
+        juce::File::createLegalFileName (names[presetIndex]) + ".xml");
+    if (! file.existsAsFile() || ! file.deleteFile())
+        return false;
+
+    currentPresetIndex = 1;
+    loadPreset (currentPresetIndex);
+    return true;
+}
+
 juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
@@ -216,6 +345,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::cr
         juce::ParameterID { "noiseCut", 1 }, "Noise Gate",
         juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, 0.0f,
         juce::AudioParameterFloatAttributes().withLabel ("%")));
+    layout.add (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "noiseGateOn", 1 }, "Noise Gate On", false));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "lowCut", 1 }, "Low Cut",
@@ -232,8 +363,27 @@ juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::cr
         juce::NormalisableRange<float> { -24.0f, 12.0f, 0.1f }, 0.0f,
         juce::AudioParameterFloatAttributes().withLabel ("dB")));
 
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "doubler", 1 }, "Doubler",
+        juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
+    layout.add (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "doublerOn", 1 }, "Doubler On", false));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "tremolo", 1 }, "Tremolo",
+        juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
+    layout.add (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "tremoloOn", 1 }, "Tremolo On", false));
+
     layout.add (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { "chorusOn", 1 }, "Chorus On", true));
+    layout.add (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "chorusFlanger", 1 }, "Chorus Flanger", false));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { "chorusFlangerMode", 1 }, "Flanger Mode",
+        juce::StringArray { "Off", "Mode I", "Mode II", "Mode III (I + II)" }, 0));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "chorusRate", 1 }, "Chorus Rate",
@@ -281,6 +431,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::cr
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "tapeOn", 1 }, "Tape On", true));
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "tapeType", 1 }, "Tape Type",
         juce::StringArray { "Studio", "Cassette" }, 0));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { "tapeOversampling", 1 }, "Tape Oversampling",
+        juce::StringArray { "Off", "2x", "4x" }, 1));
     for (auto item : { std::pair { "tapeDrive", "Tape Drive" }, std::pair { "tapeComp", "Tape Compression" },
                        std::pair { "tapeTone", "Tape Tone" }, std::pair { "tapeAge", "Tape Age" },
                        std::pair { "tapeMix", "Tape Mix" } })
@@ -324,10 +477,11 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     echoModule.prepare (spec);
     tapeModule.prepare (spec);
     springModule.prepare (spec);
+    tremoloModule.prepare (spec);
 
     globalDryBuffer.setSize (getTotalNumOutputChannels(), samplesPerBlock, false, false, true);
     globalWet.reset (sampleRate, 0.02);
-    globalWet.setCurrentAndTargetValue (parameters.getRawParameterValue ("globalOn")->load() > 0.5f ? 1.0f : 0.0f);
+    globalWet.setCurrentAndTargetValue (readParameter ("globalOn") > 0.5f ? 1.0f : 0.0f);
     noiseGateBandEnvelope.fill (0.0f);
     noiseGateLowState = noiseGateMidState = 0.0f;
     noiseGateGain = 1.0f;
@@ -347,6 +501,7 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     echoModule.reset();
     tapeModule.reset();
     springModule.reset();
+    tremoloModule.reset();
 }
 
 void RockalizerAudioProcessor::releaseResources()
@@ -372,10 +527,8 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     if (effectStateResetRequested.exchange (false, std::memory_order_acq_rel))
     {
-        tapeModule.reset();
-        chorusModule.reset();
-        echoModule.reset();
-        springModule.reset();
+        presetTransitionState = 1;
+        globalWet.setTargetValue (0.0f);
     }
 
     for (auto channel = getTotalNumInputChannels();
@@ -388,8 +541,8 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // write the result to both channels so output can never be right-only.
     if (buffer.getNumChannels() >= 2)
     {
-        const auto useInput1 = parameters.getRawParameterValue ("input1On")->load() > 0.5f;
-        const auto useInput2 = parameters.getRawParameterValue ("input2On")->load() > 0.5f;
+        const auto useInput1 = readParameter ("input1On") > 0.5f;
+        const auto useInput2 = readParameter ("input2On") > 0.5f;
         auto* left = buffer.getWritePointer (0);
         auto* right = buffer.getWritePointer (1);
         const auto gain = useInput1 && useInput2 ? 0.5f : 1.0f;
@@ -406,22 +559,23 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     {
         // A mono host bus only exposes connector 1. Respect the switches:
         // Input 2 cannot be selected when the host has not supplied it.
-        const auto useInput1 = parameters.getRawParameterValue ("input1On")->load() > 0.5f;
+        const auto useInput1 = readParameter ("input1On") > 0.5f;
         if (! useInput1)
             buffer.clear();
     }
 
     // Digital calibration after the interface conversion. Instrument mode
     // raises guitar-level signals by 6 dB; Line mode preserves full headroom.
-    if (parameters.getRawParameterValue ("inputLevel")->load() > 0.5f)
+    if (readParameter ("inputLevel") > 0.5f)
         buffer.applyGain (juce::Decibels::decibelsToGain (6.0f));
 
     // Guitar-focused, stereo-linked downward expander. Three frequency-trimmed
     // detector bands keep fundamentals, pick attack and upper harmonics equally
     // capable of opening the gate. Hysteresis and hold prevent chatter, while
     // the audio path itself remains full-band and phase-transparent.
-    const auto noiseCut = parameters.getRawParameterValue ("noiseCut")->load() * 0.01f;
-    if (noiseCut > 0.0001f)
+    const auto noiseCut = readParameter ("noiseCut") * 0.01f;
+    const auto noiseGateEnabled = readParameter ("noiseGateOn") > 0.5f;
+    if (noiseGateEnabled && noiseCut > 0.0001f)
     {
         const auto openThresholdDb = juce::jmap (noiseCut, -78.0f, -32.0f);
         const auto closeThresholdDb = openThresholdDb - 6.0f;
@@ -515,49 +669,120 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     inputPeakDb.store (juce::Decibels::gainToDecibels (inputPeak, -100.0f), std::memory_order_relaxed);
     if (inputPeak >= 1.0f)
         inputClip.store (true, std::memory_order_relaxed);
-    globalWet.setTargetValue (parameters.getRawParameterValue ("globalOn")->load() > 0.5f ? 1.0f : 0.0f);
+    const auto requestedGlobalWet = readParameter ("globalOn") > 0.5f ? 1.0f : 0.0f;
+    if (presetTransitionState == 1)
+    {
+        globalWet.setTargetValue (0.0f);
+        if (! globalWet.isSmoothing() && globalWet.getCurrentValue() <= 0.00001f)
+        {
+            tapeModule.reset();
+            tremoloModule.reset();
+            chorusModule.reset();
+            echoModule.reset();
+            springModule.reset();
+            tapeWasActive = chorusWasActive = tremoloWasActive = false;
+            echoWasActive = springWasActive = false;
+            presetTransitionState = 2;
+            globalWet.setTargetValue (requestedGlobalWet);
+        }
+    }
+    else
+    {
+        globalWet.setTargetValue (requestedGlobalWet);
+        if (presetTransitionState == 2 && ! globalWet.isSmoothing())
+            presetTransitionState = 0;
+    }
 
     // Once the global bypass fade has finished, avoid running the complete DSP
     // chain. The sanitized dry signal is already in the host buffer.
     if (! globalWet.isSmoothing() && globalWet.getCurrentValue() <= 0.00001f)
     {
+        if (globalWasActive)
+        {
+            tapeModule.reset();
+            tremoloModule.reset();
+            chorusModule.reset();
+            echoModule.reset();
+            springModule.reset();
+            tapeWasActive = chorusWasActive = tremoloWasActive = false;
+            echoWasActive = springWasActive = false;
+        }
+        globalWasActive = false;
         outputPeakDb.store (inputPeakDb.load (std::memory_order_relaxed), std::memory_order_relaxed);
         if (inputPeak >= 1.0f)
             outputClip.store (true, std::memory_order_relaxed);
         return;
     }
+    globalWasActive = true;
 
-    inputGain.setGainDecibels (parameters.getRawParameterValue ("inputGain")->load());
-    lowCutFilter.setCutoffFrequency (parameters.getRawParameterValue ("lowCut")->load());
-    const auto safeHighCut = juce::jmin (parameters.getRawParameterValue ("highCut")->load(),
-                                         static_cast<float> (currentSampleRate * 0.45));
+    const auto inputGainDb = readParameter ("inputGain");
+    const auto lowCutHz = readParameter ("lowCut");
+    const auto highCutHz = readParameter ("highCut");
+    const auto outputGainDb = readParameter ("outputGain");
+    inputGain.setGainDecibels (inputGainDb);
+    lowCutFilter.setCutoffFrequency (lowCutHz);
+    const auto safeHighCut = juce::jmin (highCutHz, static_cast<float> (currentSampleRate * 0.45));
     highCutFilter.setCutoffFrequency (safeHighCut);
-    outputGain.setGainDecibels (parameters.getRawParameterValue ("outputGain")->load());
+    outputGain.setGainDecibels (outputGainDb);
 
     auto block = juce::dsp::AudioBlock<float> (buffer);
     auto context = juce::dsp::ProcessContextReplacing<float> (block);
 
-    inputGain.process (context);
-    lowCutFilter.process (context);
+    // Endpoint controls are true bypasses. Besides saving CPU, this guarantees
+    // that the all-off/default path contains no coefficient updates or phase-
+    // rotating filters that can be mistaken for a subtle moving/swirling sound.
+    if (std::abs (inputGainDb) > 0.0001f)
+        inputGain.process (context);
+    if (lowCutHz > 20.5f)
+        lowCutFilter.process (context);
 
-    tapeModule.setParameters (parameters.getRawParameterValue ("tapeDrive")->load(),
-        parameters.getRawParameterValue ("tapeComp")->load(), parameters.getRawParameterValue ("tapeTone")->load(),
-        parameters.getRawParameterValue ("tapeAge")->load(), parameters.getRawParameterValue ("tapeMix")->load(),
-        parameters.getRawParameterValue ("tapeOn")->load() > 0.5f,
-        static_cast<int> (parameters.getRawParameterValue ("tapeType")->load()));
-    tapeModule.process (buffer);
+    const auto tapeActive = readParameter ("tapeOn") > 0.5f;
+    if (tapeActive)
+    {
+        tapeModule.setParameters (readParameter ("tapeDrive"),
+            readParameter ("tapeComp"), readParameter ("tapeTone"),
+            readParameter ("tapeAge"), readParameter ("tapeMix"),
+            true, static_cast<int> (readParameter ("tapeType")),
+            static_cast<int> (readParameter ("tapeOversampling")));
+        tapeModule.process (buffer);
+    }
+    else if (tapeWasActive)
+        tapeModule.reset();
+    tapeWasActive = tapeActive;
 
-    chorusModule.setParameters (
-        parameters.getRawParameterValue ("chorusRate")->load(),
-        parameters.getRawParameterValue ("chorusDepth")->load(),
-        parameters.getRawParameterValue ("chorusWidth")->load(),
-        parameters.getRawParameterValue ("chorusTone")->load(),
-        parameters.getRawParameterValue ("chorusMix")->load(),
-        parameters.getRawParameterValue ("chorusOn")->load() > 0.5f);
-    chorusModule.process (buffer);
+    const auto tremoloActive = readParameter ("tremoloOn") > 0.5f
+                            && readParameter ("tremolo") > 0.001f;
+    if (tremoloActive)
+    {
+        tremoloModule.setAmount (readParameter ("tremolo"));
+        tremoloModule.process (buffer);
+    }
+    else if (tremoloWasActive)
+        tremoloModule.reset();
+    tremoloWasActive = tremoloActive;
 
-    auto echoTime = parameters.getRawParameterValue ("echoTime")->load();
-    if (parameters.getRawParameterValue ("echoSync")->load() > 0.5f)
+    const auto chorusActive = readParameter ("chorusOn") > 0.5f;
+    if (chorusActive)
+    {
+        auto flangerMode = static_cast<int> (readParameter ("chorusFlangerMode"));
+        // Backward compatibility: v0.47 and earlier stored one Flanger boolean.
+        if (flangerMode == 0 && readParameter ("chorusFlanger") > 0.5f)
+            flangerMode = 1;
+        chorusModule.setParameters (
+            readParameter ("chorusRate"),
+            readParameter ("chorusDepth"),
+            readParameter ("chorusWidth"),
+            readParameter ("chorusTone"),
+            readParameter ("chorusMix"), true, flangerMode);
+        chorusModule.process (buffer);
+    }
+    else if (chorusWasActive)
+        chorusModule.reset();
+    chorusWasActive = chorusActive;
+
+    const auto echoActive = readParameter ("echoOn") > 0.5f;
+    auto echoTime = readParameter ("echoTime");
+    if (echoActive && readParameter ("echoSync") > 0.5f)
     {
         auto bpm = 120.0;
         if (auto* playHead = getPlayHead())
@@ -565,25 +790,57 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                 if (auto hostBpm = position->getBpm()) bpm = *hostBpm;
         constexpr float beats[] { 1.0f, 1.5f, 0.5f, 0.75f, 1.0f / 3.0f,
                                   0.25f, 0.375f, 1.0f / 6.0f };
-        const auto division = juce::jlimit (0, 7, static_cast<int> (parameters.getRawParameterValue ("echoDivision")->load()));
-        echoTime = static_cast<float> (60000.0 / bpm) * beats[division];
+        const auto division = juce::jlimit (0, 7, static_cast<int> (readParameter ("echoDivision")));
+        if (std::abs (bpm - cachedTempoBpm) > 0.0001 || division != cachedEchoDivision)
+        {
+            cachedTempoBpm = bpm;
+            cachedEchoDivision = division;
+            cachedSyncedEchoMs = static_cast<float> (60000.0 / bpm) * beats[division];
+        }
+        echoTime = cachedSyncedEchoMs;
     }
-    echoModule.setParameters (echoTime,
-        parameters.getRawParameterValue ("echoRepeats")->load(), parameters.getRawParameterValue ("echoTone")->load(),
-        parameters.getRawParameterValue ("echoWobble")->load(), parameters.getRawParameterValue ("echoDrive")->load(),
-        parameters.getRawParameterValue ("echoMix")->load(), parameters.getRawParameterValue ("echoOn")->load() > 0.5f,
-        static_cast<int> (parameters.getRawParameterValue ("echoPattern")->load()));
-    echoModule.process (buffer);
+    if (echoActive)
+    {
+        echoModule.setParameters (echoTime,
+            readParameter ("echoRepeats"), readParameter ("echoTone"),
+            readParameter ("echoWobble"), readParameter ("echoDrive"),
+            readParameter ("echoMix"), true,
+            static_cast<int> (readParameter ("echoPattern")));
+        echoModule.process (buffer);
+        echoWasActive = true;
+    }
+    else if (echoWasActive)
+    {
+        echoModule.setParameters (echoTime,
+            readParameter ("echoRepeats"), readParameter ("echoTone"),
+            readParameter ("echoWobble"), readParameter ("echoDrive"),
+            readParameter ("echoMix"), false,
+            static_cast<int> (readParameter ("echoPattern")));
+        echoModule.process (buffer);
+        if (! echoModule.isWetTransitionActive())
+        {
+            echoModule.reset();
+            echoWasActive = false;
+        }
+    }
 
-    springModule.setParameters (parameters.getRawParameterValue ("springDecay")->load(),
-        parameters.getRawParameterValue ("springDwell")->load(), parameters.getRawParameterValue ("springTone")->load(),
-        parameters.getRawParameterValue ("springDrip")->load(), parameters.getRawParameterValue ("springMix")->load(),
-        parameters.getRawParameterValue ("springOn")->load() > 0.5f,
-        static_cast<int> (parameters.getRawParameterValue ("springType")->load()));
-    springModule.process (buffer);
+    const auto springActive = readParameter ("springOn") > 0.5f;
+    if (springActive)
+    {
+        springModule.setParameters (readParameter ("springDecay"),
+            readParameter ("springDwell"), readParameter ("springTone"),
+            readParameter ("springDrip"), readParameter ("springMix"),
+            true, static_cast<int> (readParameter ("springType")));
+        springModule.process (buffer);
+    }
+    else if (springWasActive)
+        springModule.reset();
+    springWasActive = springActive;
 
-    highCutFilter.process (context);
-    outputGain.process (context);
+    if (highCutHz < 19999.5f)
+        highCutFilter.process (context);
+    if (std::abs (outputGainDb) > 0.0001f)
+        outputGain.process (context);
 
     // Last-resort safety rail: invalid samples become silence and runaway
     // values are bounded well above normal audio level without changing the
@@ -596,14 +853,15 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                 std::isfinite (value) ? juce::jlimit (-8.0f, 8.0f, value) : 0.0f);
         }
 
-    for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
-    {
-        const auto wet = globalWet.getNextValue();
-        const auto dry = 1.0f - wet;
-        for (int channel = 0; channel < channels; ++channel)
-            buffer.setSample (channel, sample,
-                buffer.getSample (channel, sample) * wet + globalDryBuffer.getSample (channel, sample) * dry);
-    }
+    if (globalWet.isSmoothing() || globalWet.getCurrentValue() < 0.99999f)
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+        {
+            const auto wet = globalWet.getNextValue();
+            const auto dry = 1.0f - wet;
+            for (int channel = 0; channel < channels; ++channel)
+                buffer.setSample (channel, sample,
+                    buffer.getSample (channel, sample) * wet + globalDryBuffer.getSample (channel, sample) * dry);
+        }
 
     float outputPeak = 0.0f;
     for (int channel = 0; channel < channels; ++channel)

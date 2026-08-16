@@ -56,6 +56,8 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
       pluginBackground (juce::ImageFileFormat::loadFrom (BinaryData::plugin_background_png,
                                                           BinaryData::plugin_background_pngSize)
                             .rescaled (1200, 660, juce::Graphics::mediumResamplingQuality)),
+      flangerLedImage (juce::ImageFileFormat::loadFrom (BinaryData::flanger_led_v1_png,
+                                                         BinaryData::flanger_led_v1_pngSize)),
       rockalizerLogo (juce::ImageFileFormat::loadFrom (BinaryData::rockalizer_logo_v1_png,
                                                         BinaryData::rockalizer_logo_v1_pngSize)),
       tapeLogo (juce::ImageFileFormat::loadFrom (BinaryData::logo_tape_v3_png,
@@ -120,6 +122,16 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     noiseCutSlider.setTooltip ("Noise Gate");
     addAndMakeVisible (noiseCutSlider);
     noiseCutAttachment = std::make_unique<SliderAttachment> (processor.parameters, "noiseCut", noiseCutSlider);
+    noiseGateBypassButton.setClickingTogglesState (true);
+    noiseGateBypassButton.setColour (juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
+    noiseGateBypassButton.setColour (juce::TextButton::buttonOnColourId, juce::Colours::transparentBlack);
+    noiseGateBypassButton.setColour (juce::TextButton::textColourOffId, secondaryText.darker (0.55f));
+    noiseGateBypassButton.setColour (juce::TextButton::textColourOnId, secondaryText);
+    noiseGateBypassButton.setTooltip ("Noise Gate on/off");
+    addAndMakeVisible (noiseGateBypassButton);
+    noiseGateBypassAttachment = std::make_unique<ButtonAttachment> (processor.parameters,
+                                                                    "noiseGateOn",
+                                                                    noiseGateBypassButton);
 
     advancedButton.onClick = [this]
     {
@@ -140,12 +152,19 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     presetDropdownButton.onClick = [this] { showPresetMenu(); };
     addAndMakeVisible (presetDropdownButton);
 
-    for (auto* button : { &presetPreviousButton, &presetNextButton, &presetNewButton, &presetSaveButton })
+    for (auto* button : { &presetPreviousButton, &presetNextButton })
     {
         button->setColour (juce::TextButton::buttonColourId, panel);
         button->setColour (juce::TextButton::textColourOffId, primaryText);
         addAndMakeVisible (*button);
     }
+    for (auto* button : { static_cast<juce::Button*> (&presetNewButton),
+                          static_cast<juce::Button*> (&presetSaveButton),
+                          static_cast<juce::Button*> (&presetDeleteButton) })
+        addAndMakeVisible (*button);
+    presetNewButton.setTooltip ("Create a new user preset");
+    presetSaveButton.setTooltip ("Save the current settings as a user preset");
+    presetDeleteButton.setTooltip ("Delete the selected user preset");
 
     presetBox.onChange = [this]
     {
@@ -182,6 +201,12 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
         }
         if (processor.saveUserPreset (name)) refreshPresetList();
     };
+    presetDeleteButton.onClick = [this]
+    {
+        const auto selected = presetBox.getSelectedItemIndex();
+        if (processor.deleteUserPreset (selected))
+            refreshPresetList();
+    };
 
     powerButton.setClickingTogglesState (true);
     powerButton.setColour (juce::TextButton::buttonColourId, panel);
@@ -202,12 +227,16 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     };
 
     juce::Label unusedInputLabel;
+    juce::Label unusedNoiseGateLabel;
     juce::Label unusedLowCutLabel;
     juce::Label unusedHighCutLabel;
+    juce::Label unusedTremoloLabel;
     juce::Label unusedOutputLabel;
+    configureKnob (noiseCutSlider, unusedNoiseGateLabel, {}, " %");
     configureKnob (inputSlider, unusedInputLabel, {}, " dB");
     configureKnob (lowCutSlider, unusedLowCutLabel, {}, " Hz");
     configureKnob (highCutSlider, unusedHighCutLabel, {}, " Hz");
+    configureKnob (tremoloSlider, unusedTremoloLabel, {}, " %");
     configureKnob (outputSlider, unusedOutputLabel, {}, " dB");
 
     configureKnob (chorusRateSlider, chorusRateLabel, "RATE", " Hz");
@@ -219,12 +248,50 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     inputAttachment = std::make_unique<SliderAttachment> (processor.parameters, "inputGain", inputSlider);
     lowCutAttachment = std::make_unique<SliderAttachment> (processor.parameters, "lowCut", lowCutSlider);
     highCutAttachment = std::make_unique<SliderAttachment> (processor.parameters, "highCut", highCutSlider);
+    tremoloAttachment = std::make_unique<SliderAttachment> (processor.parameters, "tremolo", tremoloSlider);
+    tremoloBypassButton.setClickingTogglesState (true);
+    tremoloBypassButton.setColour (juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
+    tremoloBypassButton.setColour (juce::TextButton::buttonOnColourId, juce::Colours::transparentBlack);
+    tremoloBypassButton.setColour (juce::TextButton::textColourOffId, secondaryText.darker (0.55f));
+    tremoloBypassButton.setColour (juce::TextButton::textColourOnId, primaryText);
+    tremoloBypassButton.setTooltip ("Fender-style bias tremolo on/off");
+    addAndMakeVisible (tremoloBypassButton);
+    tremoloBypassAttachment = std::make_unique<ButtonAttachment> (processor.parameters,
+                                                                  "tremoloOn",
+                                                                  tremoloBypassButton);
     outputAttachment = std::make_unique<SliderAttachment> (processor.parameters, "outputGain", outputSlider);
     chorusRateAttachment = std::make_unique<SliderAttachment> (processor.parameters, "chorusRate", chorusRateSlider);
     chorusDepthAttachment = std::make_unique<SliderAttachment> (processor.parameters, "chorusDepth", chorusDepthSlider);
     chorusWidthAttachment = std::make_unique<SliderAttachment> (processor.parameters, "chorusWidth", chorusWidthSlider);
     chorusToneAttachment = std::make_unique<SliderAttachment> (processor.parameters, "chorusTone", chorusToneSlider);
     chorusMixAttachment = std::make_unique<SliderAttachment> (processor.parameters, "chorusMix", chorusMixSlider);
+
+    const auto setFlangerMode = [this] (int requestedMode)
+    {
+        auto current = juce::roundToInt (
+            processor.parameters.getRawParameterValue ("chorusFlangerMode")->load());
+        if (current == 0 && processor.parameters.getRawParameterValue ("chorusFlanger")->load() > 0.5f)
+            current = 1;
+        // Mode is a two-bit switch state: I=1, II=2 and I+II=3 (Mode III).
+        const auto next = current ^ requestedMode;
+        if (auto* parameter = processor.parameters.getParameter ("chorusFlangerMode"))
+        {
+            parameter->beginChangeGesture();
+            parameter->setValueNotifyingHost (parameter->convertTo0to1 (static_cast<float> (next)));
+            parameter->endChangeGesture();
+        }
+        // Keep the legacy switch in step so older user-preset files remain useful.
+        if (auto* legacy = processor.parameters.getParameter ("chorusFlanger"))
+            legacy->setValueNotifyingHost (next > 0 ? 1.0f : 0.0f);
+    };
+    chorusFlangerMode1Button.setTooltip ("Mode I: warm sweep. Press I + II for Mode III");
+    chorusFlangerMode2Button.setTooltip ("Mode II: faster sweep. Press I + II for Mode III");
+    chorusFlangerMode1Button.setLedImage (flangerLedImage);
+    chorusFlangerMode2Button.setLedImage (flangerLedImage);
+    chorusFlangerMode1Button.onClick = [setFlangerMode] { setFlangerMode (1); };
+    chorusFlangerMode2Button.onClick = [setFlangerMode] { setFlangerMode (2); };
+    addAndMakeVisible (chorusFlangerMode1Button);
+    addAndMakeVisible (chorusFlangerMode2Button);
 
     chorusBypassButton.setClickingTogglesState (true);
     chorusBypassButton.setColour (juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
@@ -261,8 +328,8 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     echoOnButton.setColour (juce::TextButton::textColourOffId, secondaryText.darker (0.55f));
     echoOnButton.setColour (juce::TextButton::textColourOnId, primaryText);
     addAndMakeVisible (echoOnButton);
-    echoSyncButton.setColour (juce::ToggleButton::textColourId, primaryText);
-    echoSyncButton.setColour (juce::ToggleButton::tickColourId, accent);
+    echoSyncButton.setLedImage (flangerLedImage);
+    echoSyncButton.setTooltip ("Synchronise Echo time to the host tempo");
     addAndMakeVisible (echoSyncButton);
     echoOnAttachment = std::make_unique<ButtonAttachment> (processor.parameters, "echoOn", echoOnButton);
     echoSyncAttachment = std::make_unique<ButtonAttachment> (processor.parameters, "echoSync", echoSyncButton);
@@ -315,6 +382,18 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     tapeTypeBox.setColour (juce::ComboBox::outlineColourId, panelBorder);
     addAndMakeVisible (tapeTypeBox);
     tapeTypeAttachment = std::make_unique<ComboBoxAttachment> (processor.parameters, "tapeType", tapeTypeBox);
+    tapeOversamplingBox.addItemList ({ "OFF", "2X", "4X" }, 1);
+    tapeOversamplingBox.setColour (juce::ComboBox::backgroundColourId, background);
+    tapeOversamplingBox.setColour (juce::ComboBox::textColourId, primaryText);
+    tapeOversamplingBox.setColour (juce::ComboBox::outlineColourId, panelBorder);
+    tapeOversamplingBox.setTooltip ("Tape oversampling quality");
+    optionsGroup.addAndMakeVisible (tapeOversamplingBox);
+    tapeOversamplingLabel.setText ("TAPE OVERSAMPLING", juce::dontSendNotification);
+    tapeOversamplingLabel.setColour (juce::Label::textColourId, secondaryText);
+    tapeOversamplingLabel.setFont (juce::FontOptions (11.5f, juce::Font::bold));
+    optionsGroup.addAndMakeVisible (tapeOversamplingLabel);
+    tapeOversamplingAttachment = std::make_unique<ComboBoxAttachment> (
+        processor.parameters, "tapeOversampling", tapeOversamplingBox);
     tapeOnButton.setClickingTogglesState (true);
     tapeOnButton.setColour (juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
     tapeOnButton.setColour (juce::TextButton::buttonOnColourId, juce::Colours::transparentBlack);
@@ -356,6 +435,16 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     setSize (referenceWidth, referenceHeight);
     updateAdvancedVisibility();
     refreshPresetList();
+    logoButton.setTooltip ("About Rockalizer");
+    logoButton.onClick = [this]
+    {
+        aboutPanel.setVisible (true);
+        aboutPanel.toFront (true);
+    };
+    addAndMakeVisible (logoButton);
+    aboutPanel.setLogo (rockalizerLogo);
+    addChildComponent (aboutPanel);
+    aboutPanel.setVisible (false);
     startTimerHz (30);
 }
 
@@ -435,19 +524,38 @@ void RockalizerAudioProcessorEditor::timerCallback()
     const auto chorusEnabled = processor.parameters.getRawParameterValue ("chorusOn")->load() > 0.5f;
     const auto echoEnabled = processor.parameters.getRawParameterValue ("echoOn")->load() > 0.5f;
     const auto springEnabled = processor.parameters.getRawParameterValue ("springOn")->load() > 0.5f;
-    setModuleAlpha (tapeEnabled, { &tapeTypeBox, &tapeDriveSlider, &tapeToneSlider, &tapeMixSlider,
+    const auto tremoloEnabled = processor.parameters.getRawParameterValue ("tremoloOn")->load() > 0.5f;
+    const auto noiseGateEnabled = processor.parameters.getRawParameterValue ("noiseGateOn")->load() > 0.5f;
+    const auto globalEnabled = processor.parameters.getRawParameterValue ("globalOn")->load() > 0.5f;
+    tremoloSlider.setAlpha (globalEnabled && tremoloEnabled ? 1.0f : 0.28f);
+    tremoloBypassButton.setAlpha (globalEnabled ? 1.0f : 0.28f);
+    noiseCutSlider.setAlpha (noiseGateEnabled ? 1.0f : 0.28f);
+    const auto storedFlangerMode = juce::roundToInt (
+        processor.parameters.getRawParameterValue ("chorusFlangerMode")->load());
+    const auto legacyFlangerOn = processor.parameters.getRawParameterValue ("chorusFlanger")->load() > 0.5f;
+    const auto visibleFlangerMode = storedFlangerMode == 0 && legacyFlangerOn ? 1 : storedFlangerMode;
+    chorusFlangerMode1Button.setToggleState ((visibleFlangerMode & 1) != 0, juce::dontSendNotification);
+    chorusFlangerMode2Button.setToggleState ((visibleFlangerMode & 2) != 0, juce::dontSendNotification);
+    presetDeleteButton.setEnabled (processor.getCurrentPresetIndex()
+                                   >= RockalizerAudioProcessor::factoryPresetCount);
+    setModuleAlpha (globalEnabled && tapeEnabled, { &tapeOnButton, &tapeTypeBox,
+                                  &tapeDriveSlider, &tapeToneSlider, &tapeMixSlider,
                                   &tapeCompSlider, &tapeAgeSlider, &tapeDriveLabel, &tapeToneLabel,
                                   &tapeMixLabel, &tapeCompLabel, &tapeAgeLabel });
-    setModuleAlpha (chorusEnabled, { &chorusRateSlider, &chorusDepthSlider, &chorusMixSlider,
-                                    &chorusWidthSlider, &chorusToneSlider, &chorusRateLabel,
+    setModuleAlpha (globalEnabled && chorusEnabled, { &chorusBypassButton,
+                                    &chorusRateSlider, &chorusDepthSlider, &chorusMixSlider,
+                                    &chorusWidthSlider, &chorusToneSlider, &chorusFlangerMode1Button,
+                                    &chorusFlangerMode2Button, &chorusRateLabel,
                                     &chorusDepthLabel, &chorusMixLabel, &chorusWidthLabel,
                                     &chorusToneLabel });
-    setModuleAlpha (echoEnabled, { &echoPatternBox, &echoSyncButton, &echoTimeSlider,
+    setModuleAlpha (globalEnabled && echoEnabled, { &echoOnButton, &echoPatternBox,
+                                  &echoSyncButton, &echoTimeSlider,
                                   &echoRepeatsSlider, &echoMixSlider, &echoToneSlider,
                                   &echoWobbleSlider, &echoDriveSlider, &echoTimeLabel,
                                   &echoRepeatsLabel, &echoMixLabel, &echoToneLabel,
                                   &echoWobbleLabel, &echoDriveLabel });
-    setModuleAlpha (springEnabled, { &springTypeBox, &springDecaySlider, &springToneSlider,
+    setModuleAlpha (globalEnabled && springEnabled, { &springOnButton, &springTypeBox,
+                                    &springDecaySlider, &springToneSlider,
                                     &springMixSlider, &springDwellSlider, &springDripSlider,
                                     &springDecayLabel, &springToneLabel, &springMixLabel,
                                     &springDwellLabel, &springDripLabel });
@@ -532,7 +640,7 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
 
     if (rockalizerLogo.isValid())
     {
-        const auto logoBounds = juce::Rectangle<float> { 12.0f, 9.0f, 232.0f, 74.0f };
+        const auto logoBounds = juce::Rectangle<float> { 46.0f, 10.0f, 252.0f, 80.0f };
         g.setColour (juce::Colours::black.withAlpha (0.72f));
         g.drawImage (rockalizerLogo, logoBounds.translated (3.0f, 4.0f),
                      juce::RectanglePlacement::centred, true);
@@ -545,10 +653,6 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
         g.setFont (juce::FontOptions (30.0f, juce::Font::bold));
         g.drawText ("ROCKALIZER", 24, 20, 178, 54, juce::Justification::centredLeft);
     }
-    g.setColour (secondaryText);
-    g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
-    g.drawText ("NOISE GATE", 260, 58, 72, 16, juce::Justification::centred);
-
     auto preset = juce::Rectangle<float> (342.0f, 18.0f, 530.0f, 56.0f);
     g.setColour (panel);
     g.fillRoundedRectangle (preset, 8.0f);
@@ -570,11 +674,12 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
         { 74.0f, 0.0f, 876.0f, 1536.0f },
         { 58.0f, 0.0f, 908.0f, 1536.0f }
     };
+    const auto globalEnabled = processor.parameters.getRawParameterValue ("globalOn")->load() > 0.5f;
     const bool moduleEnabled[] {
-        processor.parameters.getRawParameterValue ("tapeOn")->load() > 0.5f,
-        processor.parameters.getRawParameterValue ("chorusOn")->load() > 0.5f,
-        processor.parameters.getRawParameterValue ("echoOn")->load() > 0.5f,
-        processor.parameters.getRawParameterValue ("springOn")->load() > 0.5f
+        globalEnabled && processor.parameters.getRawParameterValue ("tapeOn")->load() > 0.5f,
+        globalEnabled && processor.parameters.getRawParameterValue ("chorusOn")->load() > 0.5f,
+        globalEnabled && processor.parameters.getRawParameterValue ("echoOn")->load() > 0.5f,
+        globalEnabled && processor.parameters.getRawParameterValue ("springOn")->load() > 0.5f
     };
 
     for (int index = 0; index < moduleNames.size(); ++index)
@@ -614,7 +719,17 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
         }
     }
 
-    auto footer = juce::Rectangle<float> (left, height - 108.0f, width - left * 2.0f, 100.0f);
+    // Deliberately code-rendered: no image masks or decorative hit targets.
+    // Mode buttons use the exact same LED component as Echo Sync.
+    const auto chorusIsOn = globalEnabled
+        && processor.parameters.getRawParameterValue ("chorusOn")->load() > 0.5f;
+    g.setColour (juce::Colour (0xffead9b8).withAlpha (chorusIsOn ? 0.92f : 0.24f));
+    g.setFont (juce::FontOptions (15.0f, juce::Font::bold | juce::Font::italic));
+    g.drawText ("FLANGER", 358, 390, 78, 30, juce::Justification::centredRight);
+
+    // Compact rack plate with a clear gap below the pedals. Every control,
+    // label and meter remains inside this faceplate.
+    auto footer = juce::Rectangle<float> (left, height - 114.0f, width - left * 2.0f, 108.0f);
     g.setColour (panel.withAlpha (0.72f));
     g.fillRoundedRectangle (footer, 10.0f);
     g.setColour (panelBorder.withAlpha (0.66f));
@@ -622,16 +737,11 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (primaryText);
     g.setFont (juce::FontOptions (14.0f, juce::Font::bold));
-    const auto labelY = static_cast<int> (height - 102.0f);
-    const auto instrumentInput = processor.parameters.getRawParameterValue ("inputLevel")->load() > 0.5f;
-    g.drawText (instrumentInput ? "GUITAR IN" : "LINE IN", 42, labelY, 110, 20,
-                juce::Justification::centred);
-    g.drawText ("LOW CUT", static_cast<int> (width * 0.5f - 142.0f), labelY, 110, 20,
-                juce::Justification::centred);
-    g.drawText ("HI CUT", static_cast<int> (width * 0.5f + 32.0f), labelY, 110, 20,
-                juce::Justification::centred);
-    g.drawText ("OUTPUT", static_cast<int> (width - 152.0f), labelY, 110, 20,
-                juce::Justification::centred);
+    const auto labelY = static_cast<int> (height - 112.0f);
+    g.drawText ("INPUT", 305, labelY, 110, 20, juce::Justification::centred);
+    g.drawText ("LOW CUT", 445, labelY, 110, 20, juce::Justification::centred);
+    g.drawText ("HI CUT", 585, labelY, 110, 20, juce::Justification::centred);
+    g.drawText ("OUTPUT", 980, labelY, 110, 20, juce::Justification::centred);
 
     const auto drawMeter = [&g] (juce::Rectangle<float> meter, float levelDb, bool clipped)
     {
@@ -646,8 +756,8 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
         g.setColour (clipped ? juce::Colour (0xffff4545) : panelBorder);
         g.drawRoundedRectangle (meter, 4.0f, clipped ? 2.0f : 1.0f);
     };
-    drawMeter ({ 154.0f, height - 67.0f, 248.0f, 12.0f }, displayInputDb, inputClipped);
-    drawMeter ({ width - 402.0f, height - 67.0f, 248.0f, 12.0f }, displayOutputDb, outputClipped);
+    drawMeter ({ 175.0f, height - 78.0f, 115.0f, 10.0f }, displayInputDb, inputClipped);
+    drawMeter ({ 850.0f, height - 78.0f, 115.0f, 10.0f }, displayOutputDb, outputClipped);
 }
 
 void RockalizerAudioProcessorEditor::resized()
@@ -663,20 +773,36 @@ void RockalizerAudioProcessorEditor::resized()
                           juce::roundToInt (78 * scaleY));
     };
 
-    place (inputSlider, 42, 570);
-    place (lowCutSlider, 458, 570);
-    place (highCutSlider, 632, 570);
-    place (outputSlider, 1048, 570);
-    noiseCutSlider.setBounds (juce::roundToInt (270 * scaleX), juce::roundToInt (18 * scaleY),
-                              juce::roundToInt (52 * scaleX), juce::roundToInt (40 * scaleY));
+    place (noiseCutSlider, 50, 574);
+    noiseGateBypassButton.setBounds (juce::roundToInt (50 * scaleX),
+                                     juce::roundToInt (548 * scaleY),
+                                     juce::roundToInt (110 * scaleX),
+                                     juce::roundToInt (18 * scaleY));
+    place (inputSlider, 305, 574);
+    place (lowCutSlider, 445, 574);
+    place (highCutSlider, 585, 574);
+    place (tremoloSlider, 725, 574);
+    tremoloBypassButton.setBounds (juce::roundToInt (725 * scaleX),
+                                   juce::roundToInt (548 * scaleY),
+                                   juce::roundToInt (110 * scaleX),
+                                   juce::roundToInt (18 * scaleY));
+    place (outputSlider, 980, 574);
     optionsGroup.setBounds (juce::roundToInt (898 * scaleX), juce::roundToInt (82 * scaleY),
-                            juce::roundToInt (282 * scaleX), juce::roundToInt (88 * scaleY));
+                            juce::roundToInt (282 * scaleX), juce::roundToInt (132 * scaleY));
     input1Button.setBounds (juce::roundToInt (12 * scaleX), juce::roundToInt (30 * scaleY),
                             juce::roundToInt (72 * scaleX), juce::roundToInt (32 * scaleY));
     input2Button.setBounds (juce::roundToInt (88 * scaleX), juce::roundToInt (30 * scaleY),
                             juce::roundToInt (72 * scaleX), juce::roundToInt (32 * scaleY));
     inputLevelBox.setBounds (juce::roundToInt (164 * scaleX), juce::roundToInt (30 * scaleY),
                              juce::roundToInt (106 * scaleX), juce::roundToInt (32 * scaleY));
+    tapeOversamplingLabel.setBounds (juce::roundToInt (14 * scaleX),
+                                     juce::roundToInt (74 * scaleY),
+                                     juce::roundToInt (142 * scaleX),
+                                     juce::roundToInt (28 * scaleY));
+    tapeOversamplingBox.setBounds (juce::roundToInt (164 * scaleX),
+                                   juce::roundToInt (72 * scaleY),
+                                   juce::roundToInt (106 * scaleX),
+                                   juce::roundToInt (32 * scaleY));
     advancedButton.setBounds (juce::roundToInt (892 * scaleX), juce::roundToInt (18 * scaleY),
                               juce::roundToInt (92 * scaleX), juce::roundToInt (56 * scaleY));
     optionsMenuButton.setBounds (juce::roundToInt (1004 * scaleX), juce::roundToInt (18 * scaleY),
@@ -685,6 +811,9 @@ void RockalizerAudioProcessorEditor::resized()
     advancedButton.toFront (false);
     powerButton.setBounds (juce::roundToInt (1080 * scaleX), juce::roundToInt (18 * scaleY),
                            juce::roundToInt (60 * scaleX), juce::roundToInt (56 * scaleY));
+    logoButton.setBounds (juce::roundToInt (46 * scaleX), juce::roundToInt (10 * scaleY),
+                          juce::roundToInt (252 * scaleX), juce::roundToInt (80 * scaleY));
+    aboutPanel.setBounds (getLocalBounds());
     presetPreviousButton.setBounds (juce::roundToInt (352 * scaleX), juce::roundToInt (28 * scaleY),
                                     juce::roundToInt (38 * scaleX), juce::roundToInt (36 * scaleY));
     presetBox.setBounds (juce::roundToInt (398 * scaleX), juce::roundToInt (28 * scaleY),
@@ -695,9 +824,11 @@ void RockalizerAudioProcessorEditor::resized()
     presetNextButton.setBounds (juce::roundToInt (662 * scaleX), juce::roundToInt (28 * scaleY),
                                 juce::roundToInt (38 * scaleX), juce::roundToInt (36 * scaleY));
     presetNewButton.setBounds (juce::roundToInt (708 * scaleX), juce::roundToInt (28 * scaleY),
-                               juce::roundToInt (68 * scaleX), juce::roundToInt (36 * scaleY));
-    presetSaveButton.setBounds (juce::roundToInt (784 * scaleX), juce::roundToInt (28 * scaleY),
-                                juce::roundToInt (74 * scaleX), juce::roundToInt (36 * scaleY));
+                               juce::roundToInt (40 * scaleX), juce::roundToInt (36 * scaleY));
+    presetSaveButton.setBounds (juce::roundToInt (754 * scaleX), juce::roundToInt (28 * scaleY),
+                                juce::roundToInt (40 * scaleX), juce::roundToInt (36 * scaleY));
+    presetDeleteButton.setBounds (juce::roundToInt (800 * scaleX), juce::roundToInt (28 * scaleY),
+                                  juce::roundToInt (40 * scaleX), juce::roundToInt (36 * scaleY));
 
     const auto chorusCardX = 318;
     const auto placeChorus = [scaleX, scaleY] (juce::Slider& slider,
@@ -721,6 +852,14 @@ void RockalizerAudioProcessorEditor::resized()
     placeChorus (chorusMixSlider, chorusMixLabel, chorusCardX + 184, 150, 68);
     placeChorus (chorusWidthSlider, chorusWidthLabel, chorusCardX + 66, 275, 68);
     placeChorus (chorusToneSlider, chorusToneLabel, chorusCardX + 142, 275, 68);
+    chorusFlangerMode1Button.setBounds (juce::roundToInt (440 * scaleX),
+                                        juce::roundToInt (389 * scaleY),
+                                        juce::roundToInt (58 * scaleX),
+                                        juce::roundToInt (32 * scaleY));
+    chorusFlangerMode2Button.setBounds (juce::roundToInt (502 * scaleX),
+                                        juce::roundToInt (389 * scaleY),
+                                        juce::roundToInt (58 * scaleX),
+                                        juce::roundToInt (32 * scaleY));
 
     chorusBypassButton.setBounds (juce::roundToInt ((chorusCardX + 18) * scaleX),
                                   juce::roundToInt (438 * scaleY),
@@ -736,10 +875,10 @@ void RockalizerAudioProcessorEditor::resized()
         slider.setBounds (juce::roundToInt (x * scaleX), juce::roundToInt ((y + 18) * scaleY),
                           juce::roundToInt (size * scaleX), juce::roundToInt (74 * scaleY));
     };
-    echoPatternBox.setBounds (juce::roundToInt ((echoCardX + 42) * scaleX), juce::roundToInt (402 * scaleY),
-                              juce::roundToInt (120 * scaleX), juce::roundToInt (28 * scaleY));
-    echoSyncButton.setBounds (juce::roundToInt ((echoCardX + 166) * scaleX), juce::roundToInt (402 * scaleY),
-                              juce::roundToInt (68 * scaleX), juce::roundToInt (28 * scaleY));
+    echoPatternBox.setBounds (juce::roundToInt ((echoCardX + 34) * scaleX), juce::roundToInt (398 * scaleY),
+                              juce::roundToInt (108 * scaleX), juce::roundToInt (32 * scaleY));
+    echoSyncButton.setBounds (juce::roundToInt ((echoCardX + 144) * scaleX), juce::roundToInt (398 * scaleY),
+                              juce::roundToInt (112 * scaleX), juce::roundToInt (32 * scaleY));
     placeEcho (echoTimeSlider, echoTimeLabel, echoCardX + 24, 150, 68);
     placeEcho (echoRepeatsSlider, echoRepeatsLabel, echoCardX + 104, 150, 68);
     placeEcho (echoMixSlider, echoMixLabel, echoCardX + 184, 150, 68);
@@ -750,8 +889,8 @@ void RockalizerAudioProcessorEditor::resized()
                             juce::roundToInt (240 * scaleX), juce::roundToInt (46 * scaleY));
 
     const auto tapeCardX = 28;
-    tapeTypeBox.setBounds (juce::roundToInt ((tapeCardX + 42) * scaleX), juce::roundToInt (402 * scaleY),
-                           juce::roundToInt (192 * scaleX), juce::roundToInt (28 * scaleY));
+    tapeTypeBox.setBounds (juce::roundToInt ((tapeCardX + 82) * scaleX), juce::roundToInt (398 * scaleY),
+                           juce::roundToInt (112 * scaleX), juce::roundToInt (32 * scaleY));
     const auto placeTape = [scaleX, scaleY] (juce::Slider& slider, juce::Label& label,
                                              int x, int y, int size = 90)
     {
@@ -769,8 +908,8 @@ void RockalizerAudioProcessorEditor::resized()
                             juce::roundToInt (240 * scaleX), juce::roundToInt (46 * scaleY));
 
     const auto springCardX = 898;
-    springTypeBox.setBounds (juce::roundToInt ((springCardX + 42) * scaleX), juce::roundToInt (402 * scaleY),
-                             juce::roundToInt (192 * scaleX), juce::roundToInt (28 * scaleY));
+    springTypeBox.setBounds (juce::roundToInt ((springCardX + 82) * scaleX), juce::roundToInt (398 * scaleY),
+                             juce::roundToInt (112 * scaleX), juce::roundToInt (32 * scaleY));
     const auto placeSpring = [scaleX, scaleY] (juce::Slider& slider, juce::Label& label,
                                                int x, int y, int size = 90)
     {

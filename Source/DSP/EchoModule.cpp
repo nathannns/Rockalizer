@@ -5,26 +5,30 @@ void EchoModule::prepare (const juce::dsp::ProcessSpec& spec)
     sampleRate = spec.sampleRate;
     delayBuffer.setSize (static_cast<int> (spec.numChannels),
                          static_cast<int> (sampleRate * 4.0) + 4);
+    delayBuffer.clear();
     toneState.assign (static_cast<size_t> (spec.numChannels), 0.0f);
     delaySamples.reset (sampleRate, 0.05);
     wetMix.reset (sampleRate, 0.02);
     feedbackValue.reset (sampleRate, 0.03);
-    toneValue.reset (sampleRate, 0.03);
     wobbleValue.reset (sampleRate, 0.03);
     driveValue.reset (sampleRate, 0.03);
+    cachedToneHz = -1.0f;
     reset();
 }
 
 void EchoModule::reset()
 {
-    delayBuffer.clear();
     std::fill (toneState.begin(), toneState.end(), 0.0f);
     writeIndex = 0;
+    validSamples = 0;
     lfoPhase = 0.0f;
+    flutterPhase = 0.0f;
     delaySamples.setCurrentAndTargetValue (static_cast<float> (sampleRate * 0.375));
     wetMix.setCurrentAndTargetValue (0.0f);
     feedbackValue.setCurrentAndTargetValue (0.35f);
-    toneValue.setCurrentAndTargetValue (7000.0f);
+    toneCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
+                                        * 7000.0f / static_cast<float> (sampleRate));
+    cachedToneHz = -1.0f;
     wobbleValue.setCurrentAndTargetValue (0.0f);
     driveValue.setCurrentAndTargetValue (0.0f);
 }
@@ -35,7 +39,13 @@ void EchoModule::setParameters (float timeMs, float repeats, float toneHz, float
     delaySamples.setTargetValue (juce::jlimit (0.04f, 2.5f, timeMs * 0.001f)
                                       * static_cast<float> (sampleRate));
     feedbackValue.setTargetValue (juce::jlimit (0.0f, 0.86f, repeats * 0.0086f));
-    toneValue.setTargetValue (juce::jlimit (1200.0f, 14000.0f, toneHz));
+    const auto limitedToneHz = juce::jlimit (1200.0f, 14000.0f, toneHz);
+    if (std::abs (limitedToneHz - cachedToneHz) > 0.01f)
+    {
+        cachedToneHz = limitedToneHz;
+        toneCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
+                                            * limitedToneHz / static_cast<float> (sampleRate));
+    }
     wobbleValue.setTargetValue (juce::jlimit (0.0f, 1.0f, wobble * 0.01f));
     driveValue.setTargetValue (juce::jlimit (0.0f, 1.0f, drive * 0.01f));
     // Give guitarists much finer control over the useful low end of the Mix
@@ -47,23 +57,36 @@ void EchoModule::setParameters (float timeMs, float repeats, float toneHz, float
 
 float EchoModule::readDelay (int channel, float distance) const
 {
+    // Cubic interpolation also needs the sample immediately older than the
+    // requested position. Never let that tap reach stale pre-reset memory.
+    if (distance + 1.0f > static_cast<float> (validSamples))
+        return 0.0f;
     const auto size = delayBuffer.getNumSamples();
     auto position = static_cast<float> (writeIndex) - distance;
     while (position < 0.0f) position += static_cast<float> (size);
     while (position >= static_cast<float> (size)) position -= static_cast<float> (size);
-    const auto first = static_cast<int> (position);
-    const auto second = (first + 1) % size;
-    const auto fraction = position - static_cast<float> (first);
-    return juce::jmap (fraction, delayBuffer.getSample (channel, first),
-                      delayBuffer.getSample (channel, second));
+    const auto index1 = static_cast<int> (position);
+    const auto index0 = (index1 - 1 + size) % size;
+    const auto index2 = (index1 + 1) % size;
+    const auto index3 = (index1 + 2) % size;
+    const auto fraction = position - static_cast<float> (index1);
+    const auto y0 = delayBuffer.getSample (channel, index0);
+    const auto y1 = delayBuffer.getSample (channel, index1);
+    const auto y2 = delayBuffer.getSample (channel, index2);
+    const auto y3 = delayBuffer.getSample (channel, index3);
+    // Four-point Hermite interpolation avoids the slope discontinuities that
+    // linear interpolation exposed as alternating clicks on modulated repeats.
+    const auto c0 = y1;
+    const auto c1 = 0.5f * (y2 - y0);
+    const auto c2 = y0 - 2.5f * y1 + 2.0f * y2 - 0.5f * y3;
+    const auto c3 = 0.5f * (y3 - y0) + 1.5f * (y1 - y2);
+    return ((c3 * fraction + c2) * fraction + c1) * fraction + c0;
 }
 
-float EchoModule::processFeedbackTone (int channel, float sample, float cutoffHz)
+float EchoModule::processFeedbackTone (int channel, float sample)
 {
-    const auto coefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
-                                               * cutoffHz / static_cast<float> (sampleRate));
     auto& state = toneState[static_cast<size_t> (channel)];
-    state += coefficient * (sample - state);
+    state += toneCoefficient * (sample - state);
     return state;
 }
 
@@ -91,28 +114,37 @@ void EchoModule::process (juce::AudioBuffer<float>& buffer)
         const auto baseDelay = delaySamples.getNextValue();
         const auto mix = wetMix.getNextValue();
         const auto feedback = feedbackValue.getNextValue();
-        const auto toneCutoff = toneValue.getNextValue();
         const auto wobbleDepth = std::pow (wobbleValue.getNextValue(), 0.78f);
         const auto driveAmount = driveValue.getNextValue();
 
+        // One physical tape transport drives both channels. Independent L/R
+        // phases made high-Mix repeats jump from side to side and made the
+        // interpolation edges sound like alternating clicks.
+        auto sharedModulation = 0.0f;
+        if (wobbleDepth > 0.0001f)
+        {
+            const auto slowWobble = std::sin (lfoPhase) * 0.0048f;
+            const auto gentleFlutter = std::sin (flutterPhase) * 0.00048f;
+            sharedModulation = (slowWobble + gentleFlutter) * wobbleDepth
+                             * static_cast<float> (sampleRate);
+        }
+
         for (int channel = 0; channel < channels; ++channel)
         {
-            const auto phaseOffset = channel == 0 ? 0.0f : 1.7f;
-            const auto slowWobble = std::sin (lfoPhase + phaseOffset) * 0.0048f;
-            const auto gentleFlutter = std::sin (lfoPhase * 5.35f + phaseOffset * 0.65f) * 0.00048f;
-            const auto modulation = (slowWobble + gentleFlutter) * wobbleDepth
-                                  * static_cast<float> (sampleRate);
             float wet = 0.0f;
             for (int tap = 0; tap < taps; ++tap)
-                wet += readDelay (channel, juce::jmax (1.0f, baseDelay * ratios[tap] + modulation)) * gains[tap];
+                wet += readDelay (channel, juce::jmax (1.0f, baseDelay * ratios[tap] + sharedModulation)) * gains[tap];
             wet /= std::sqrt (static_cast<float> (taps));
 
-            auto feedbackSample = processFeedbackTone (channel, wet, toneCutoff);
-            const auto gain = 1.0f + driveAmount * 4.0f;
+            auto feedbackSample = processFeedbackTone (channel, wet);
             // Normalise by the pre-shaper gain, not tanh(gain). The previous
             // formula amplified quiet repeats inside the feedback loop and
             // could make driven multi-tap presets regenerate unexpectedly.
-            feedbackSample = std::tanh (feedbackSample * gain) / gain;
+            if (driveAmount > 0.0001f)
+            {
+                const auto gain = 1.0f + driveAmount * 4.0f;
+                feedbackSample = std::tanh (feedbackSample * gain) / gain;
+            }
 
             const auto input = buffer.getSample (channel, sample);
             // A hard jlimit introduced a derivative discontinuity whenever a
@@ -134,8 +166,12 @@ void EchoModule::process (juce::AudioBuffer<float>& buffer)
         }
 
         writeIndex = (writeIndex + 1) % delayBuffer.getNumSamples();
+        validSamples = juce::jmin (validSamples + 1, delayBuffer.getNumSamples());
         lfoPhase += lfoStep;
         if (lfoPhase >= juce::MathConstants<float>::twoPi)
             lfoPhase -= juce::MathConstants<float>::twoPi;
+        flutterPhase += lfoStep * 5.35f;
+        if (flutterPhase >= juce::MathConstants<float>::twoPi)
+            flutterPhase -= juce::MathConstants<float>::twoPi;
     }
 }
