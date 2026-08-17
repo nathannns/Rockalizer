@@ -150,7 +150,10 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             set ("tapeDrive", 28.0f); set ("tapeComp", 32.0f); set ("tapeMix", 54.0f);
             set ("chorusFlangerMode", 1.0f); set ("chorusRate", 0.22f); set ("chorusDepth", 58.0f);
             set ("chorusWidth", 42.0f); set ("chorusMix", 25.0f);
-            set ("echoPattern", 2.0f); set ("echoTime", 330.0f); set ("echoRepeats", 24.0f);
+            // Gallop's main (loudest) tap moved from 1x echoTime to 2x under
+            // the corrected RE-201 head ratios — halved so the primary slap
+            // still lands at the originally-tuned 330ms.
+            set ("echoPattern", 2.0f); set ("echoTime", 165.0f); set ("echoRepeats", 24.0f);
             set ("echoTone", 5200.0f); set ("echoMix", 15.0f); set ("springType", 1.0f);
             set ("springDecay", 38.0f); set ("springMix", 26.0f); break;
         case 9: // Neon Slap
@@ -193,7 +196,9 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             set ("tapeTone", 44.0f); set ("tapeAge", 35.0f); set ("tapeMix", 76.0f);
             set ("chorusFlangerMode", 1.0f); set ("chorusRate", 0.95f); set ("chorusDepth", 48.0f);
             set ("chorusWidth", 20.0f); set ("chorusMix", 21.0f);
-            set ("echoPattern", 2.0f); set ("echoTime", 275.0f);
+            // Same Gallop retune as Purple Motion above — halved to keep the
+            // primary slap at the originally-tuned 275ms.
+            set ("echoPattern", 2.0f); set ("echoTime", 137.5f);
             set ("echoRepeats", 18.0f); set ("echoDrive", 22.0f); set ("echoMix", 14.0f);
             set ("springType", 2.0f); set ("springDecay", 30.0f); set ("springMix", 20.0f); break;
         case 15: // Purple Jet
