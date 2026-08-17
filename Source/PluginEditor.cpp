@@ -316,7 +316,7 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     echoDriveAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoDrive", echoDriveSlider);
     echoMixAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoMix", echoMixSlider);
 
-    echoPatternBox.addItemList ({ "STRAIGHT", "BOUNCE", "GALLOP", "CLUSTER", "WASH" }, 1);
+    echoPatternBox.addItemList ({ "STRAIGHT", "BOUNCE", "GALLOP", "CLUSTER", "WASH", "PING-PONG" }, 1);
     echoPatternBox.setColour (juce::ComboBox::backgroundColourId, panel);
     echoPatternBox.setColour (juce::ComboBox::textColourId, primaryText);
     echoPatternBox.setColour (juce::ComboBox::outlineColourId, panelBorder);
