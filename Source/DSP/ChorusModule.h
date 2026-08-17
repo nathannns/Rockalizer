@@ -10,6 +10,10 @@ public:
     void setParameters (float rateHz, float depthPercent, float widthPercent,
                         float toneHz, float mixPercent, bool enabled, int flangerMode);
     void process (juce::AudioBuffer<float>& buffer);
+    bool isWetTransitionActive() const noexcept
+    {
+        return wetMix.isSmoothing() || wetMix.getCurrentValue() > 0.00001f;
+    }
 
 private:
     float readDelay (int channel, float distance) const;

@@ -11,6 +11,10 @@ public:
     void setParameters (float decay, float dwell, float tone, float drip, float mix,
                         bool enabled, int impulseIndex);
     void process (juce::AudioBuffer<float>& buffer);
+    bool isWetTransitionActive() const noexcept
+    {
+        return wetMix.isSmoothing() || wetMix.getCurrentValue() > 0.00001f;
+    }
 
 private:
     void handleAsyncUpdate() override;

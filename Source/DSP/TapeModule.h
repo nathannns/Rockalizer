@@ -10,6 +10,10 @@ public:
     void setParameters (float drive, float compression, float tone, float age,
                         float mix, bool enabled, int type, int oversamplingMode);
     void process (juce::AudioBuffer<float>& buffer);
+    bool isWetTransitionActive() const noexcept
+    {
+        return wetMix.isSmoothing() || wetMix.getCurrentValue() > 0.00001f;
+    }
 
 private:
     void processCore (juce::AudioBuffer<float>& buffer, double processingRate);

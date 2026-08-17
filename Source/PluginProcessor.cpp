@@ -799,6 +799,11 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     if (lowCutHz > 20.5f)
         lowCutFilter.process (context);
 
+    // Tape/Tremolo/Chorus below: fade the wet mix to 0 before resetting
+    // (matching Echo, which already did this correctly) instead of calling
+    // reset() directly, which snaps the internal wet-mix SmoothedValue
+    // straight to 0 with no ramp -- a real, audible click if toggled off
+    // mid-note while any of these are still audibly wet.
     const auto tapeActive = readParameter ("tapeOn") > 0.5f;
     if (tapeActive)
     {
@@ -808,10 +813,22 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             true, static_cast<int> (readParameter ("tapeType")),
             static_cast<int> (readParameter ("tapeOversampling")));
         tapeModule.process (buffer);
+        tapeWasActive = true;
     }
     else if (tapeWasActive)
-        tapeModule.reset();
-    tapeWasActive = tapeActive;
+    {
+        tapeModule.setParameters (readParameter ("tapeDrive"),
+            readParameter ("tapeComp"), readParameter ("tapeTone"),
+            readParameter ("tapeAge"), readParameter ("tapeMix"),
+            false, static_cast<int> (readParameter ("tapeType")),
+            static_cast<int> (readParameter ("tapeOversampling")));
+        tapeModule.process (buffer);
+        if (! tapeModule.isWetTransitionActive())
+        {
+            tapeModule.reset();
+            tapeWasActive = false;
+        }
+    }
 
     const auto tremoloActive = readParameter ("tremoloOn") > 0.5f
                             && readParameter ("tremolo") > 0.001f;
@@ -819,29 +836,52 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     {
         tremoloModule.setAmount (readParameter ("tremolo"));
         tremoloModule.process (buffer);
+        tremoloWasActive = true;
     }
     else if (tremoloWasActive)
-        tremoloModule.reset();
-    tremoloWasActive = tremoloActive;
+    {
+        tremoloModule.setAmount (0.0f);
+        tremoloModule.process (buffer);
+        if (! tremoloModule.isWetTransitionActive())
+        {
+            tremoloModule.reset();
+            tremoloWasActive = false;
+        }
+    }
 
     const auto chorusActive = readParameter ("chorusOn") > 0.5f;
-    if (chorusActive)
     {
         auto flangerMode = static_cast<int> (readParameter ("chorusFlangerMode"));
         // Backward compatibility: v0.47 and earlier stored one Flanger boolean.
         if (flangerMode == 0 && readParameter ("chorusFlanger") > 0.5f)
             flangerMode = 1;
-        chorusModule.setParameters (
-            readParameter ("chorusRate"),
-            readParameter ("chorusDepth"),
-            readParameter ("chorusWidth"),
-            readParameter ("chorusTone"),
-            readParameter ("chorusMix"), true, flangerMode);
-        chorusModule.process (buffer);
+        if (chorusActive)
+        {
+            chorusModule.setParameters (
+                readParameter ("chorusRate"),
+                readParameter ("chorusDepth"),
+                readParameter ("chorusWidth"),
+                readParameter ("chorusTone"),
+                readParameter ("chorusMix"), true, flangerMode);
+            chorusModule.process (buffer);
+            chorusWasActive = true;
+        }
+        else if (chorusWasActive)
+        {
+            chorusModule.setParameters (
+                readParameter ("chorusRate"),
+                readParameter ("chorusDepth"),
+                readParameter ("chorusWidth"),
+                readParameter ("chorusTone"),
+                readParameter ("chorusMix"), false, flangerMode);
+            chorusModule.process (buffer);
+            if (! chorusModule.isWetTransitionActive())
+            {
+                chorusModule.reset();
+                chorusWasActive = false;
+            }
+        }
     }
-    else if (chorusWasActive)
-        chorusModule.reset();
-    chorusWasActive = chorusActive;
 
     const auto echoActive = readParameter ("echoOn") > 0.5f;
     auto echoTime = readParameter ("echoTime");
@@ -895,10 +935,21 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             readParameter ("springDrip"), readParameter ("springMix"),
             true, static_cast<int> (readParameter ("springType")));
         springModule.process (buffer);
+        springWasActive = true;
     }
     else if (springWasActive)
-        springModule.reset();
-    springWasActive = springActive;
+    {
+        springModule.setParameters (readParameter ("springDecay"),
+            readParameter ("springDwell"), readParameter ("springTone"),
+            readParameter ("springDrip"), readParameter ("springMix"),
+            false, static_cast<int> (readParameter ("springType")));
+        springModule.process (buffer);
+        if (! springModule.isWetTransitionActive())
+        {
+            springModule.reset();
+            springWasActive = false;
+        }
+    }
 
     if (highCutHz < 19999.5f)
         highCutFilter.process (context);
