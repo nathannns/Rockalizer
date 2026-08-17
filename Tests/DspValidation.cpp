@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 #include "DSP/ChorusModule.h"
 #include "DSP/EchoModule.h"
+#include "DSP/SpringModule.h"
 #include "DSP/TapeModule.h"
 #include "DSP/TremoloModule.h"
 #include <iostream>
@@ -72,6 +73,46 @@ bool runConfiguration (double sampleRate, int blockSize, int channels)
 
     buffer.clear();
     tape.process (buffer); tremolo.process (buffer); chorus.process (buffer); echo.process (buffer);
+    return isFiniteAndBounded (buffer);
+}
+
+bool springRemainsStable (double sampleRate, int blockSize, int channels)
+{
+    const juce::dsp::ProcessSpec spec { sampleRate, static_cast<juce::uint32> (blockSize),
+                                       static_cast<juce::uint32> (channels) };
+    SpringModule spring;
+    spring.prepare (spec);
+    juce::AudioBuffer<float> buffer (channels, blockSize);
+    int64_t offset = 0;
+    std::vector<float> previousSamples (static_cast<size_t> (channels), 0.0f);
+
+    for (int block = 0; block < 240; ++block)
+    {
+        fillTestSignal (buffer, sampleRate, offset); offset += blockSize;
+        // Exercise all 3 tank models across the sweep, with dwell/drip/decay
+        // all active -- the allpass dispersion, drive saturation, and damped
+        // feedback matrix are all live at once, the worst case for any
+        // interaction between them.
+        spring.setParameters (72.0f, 60.0f, 55.0f, 50.0f, 70.0f, true, block % 3);
+        spring.process (buffer);
+        if (! isFiniteAndBounded (buffer)) return false;
+
+        if (block > 4)
+            for (int channel = 0; channel < channels; ++channel)
+                for (int sample = 0; sample < blockSize; ++sample)
+                {
+                    const auto value = buffer.getSample (channel, sample);
+                    if (std::abs (value - previousSamples[static_cast<size_t> (channel)]) > 2.0f)
+                        return false;
+                    previousSamples[static_cast<size_t> (channel)] = value;
+                }
+        else
+            for (int channel = 0; channel < channels; ++channel)
+                previousSamples[static_cast<size_t> (channel)] = buffer.getSample (channel, blockSize - 1);
+    }
+
+    buffer.clear();
+    spring.process (buffer);
     return isFiniteAndBounded (buffer);
 }
 
@@ -160,12 +201,20 @@ int main()
                 return 1;
             }
             for (const auto channels : { 1, 2 })
+            {
                 if (! runConfiguration (sampleRate, blockSize, channels))
                 {
                     std::cerr << "FAILED: " << sampleRate << " Hz, " << blockSize
                               << " samples, " << channels << " channels\n";
                     return 1;
                 }
+                if (! springRemainsStable (sampleRate, blockSize, channels))
+                {
+                    std::cerr << "FAILED Spring: " << sampleRate << " Hz, " << blockSize
+                              << " samples, " << channels << " channels\n";
+                    return 1;
+                }
+            }
         }
     std::cout << "Rockalizer DSP validation passed\n";
     return 0;

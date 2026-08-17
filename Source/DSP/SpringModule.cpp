@@ -43,6 +43,8 @@ void SpringModule::reset()
     std::fill (dripEnvelope.begin(), dripEnvelope.end(), 0.0f);
     std::fill (dispersionDampingState.begin(), dispersionDampingState.end(), 0.0f);
     std::fill (tailDampingState.begin(), tailDampingState.end(), 0.0f);
+    for (auto& stages : dispersionAllpassState)
+        stages.fill (0.0f);
     tailBuffer.clear();
     dispersionBuffer.clear();
     dispersionWriteIndex = 0;
@@ -205,6 +207,28 @@ void SpringModule::process (juce::AudioBuffer<float>& buffer)
     const auto dispersionFeedback = 0.16f + decayAmount * 0.15f
                                   + (currentModel == 2 ? 0.035f : 0.0f);
     const auto dispersionDamping = 0.16f + toneAmount * 0.34f;
+
+    // Real spring dispersion is a pure-phase (allpass) effect: higher
+    // frequencies genuinely travel faster through the coiled wire, with no
+    // magnitude change. A cascade of first-order allpass filters is the
+    // textbook way to reproduce this -- coefficients here don't depend on
+    // anything that varies within a block, so build them once rather than
+    // per sample.
+    std::array<std::array<float, numAllpassStages>, 3> allpassCoefficients {};
+    for (int spring = 0; spring < springCount; ++spring)
+    {
+        const auto stageBase = 0.5f + 0.03f * static_cast<float> (spring)
+                              + 0.015f * static_cast<float> (currentModel);
+        for (int stage = 0; stage < numAllpassStages; ++stage)
+        {
+            const auto sign = (stage % 2 == 0) ? 1.0f : -1.0f;
+            const auto ramp = 0.5f + 0.5f * static_cast<float> (stage)
+                                          / static_cast<float> (numAllpassStages - 1);
+            allpassCoefficients[static_cast<size_t> (spring)][static_cast<size_t> (stage)] =
+                juce::jlimit (-0.92f, 0.92f, stageBase * sign * ramp);
+        }
+    }
+
     for (int sample = 0; sample < samples; ++sample)
     {
         const auto wetLeft = wetBuffer.getSample (0, sample);
@@ -213,6 +237,21 @@ void SpringModule::process (juce::AudioBuffer<float>& buffer)
         float springTaps[3] {};
         for (int spring = 0; spring < springCount; ++spring)
         {
+            // Allpass-disperse the excitation before it drives this spring's
+            // existing delay-line/feedback path below -- the missing
+            // real-physics mechanism layered onto the already-tuned
+            // resonance rather than replacing it.
+            auto dispersedExcitation = excitation;
+            auto& stages = dispersionAllpassState[static_cast<size_t> (spring)];
+            const auto& coeffs = allpassCoefficients[static_cast<size_t> (spring)];
+            for (int stage = 0; stage < numAllpassStages; ++stage)
+            {
+                const auto g = coeffs[static_cast<size_t> (stage)];
+                const auto y = -g * dispersedExcitation + stages[static_cast<size_t> (stage)];
+                stages[static_cast<size_t> (stage)] = dispersedExcitation + g * y;
+                dispersedExcitation = y;
+            }
+
             const auto distance = juce::jmin (dispersionSize - 1,
                 juce::roundToInt (static_cast<float> (sampleRate)
                                   * dispersionTimesMs[currentModel][spring] * 0.001f));
@@ -221,7 +260,7 @@ void SpringModule::process (juce::AudioBuffer<float>& buffer)
             auto& damped = dispersionDampingState[static_cast<size_t> (spring)];
             damped += dispersionDamping * (delayed - damped);
             springTaps[spring] = damped;
-            const auto drive = excitation * (0.52f + dripAmount * 0.10f)
+            const auto drive = dispersedExcitation * (0.52f + dripAmount * 0.10f)
                              + damped * dispersionFeedback;
             dispersionBuffer.setSample (spring, dispersionWriteIndex, std::tanh (drive));
         }

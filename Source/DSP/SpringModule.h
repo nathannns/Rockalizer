@@ -31,6 +31,16 @@ private:
     float tailModPhase = 0.0f;
     double sampleRate = 44100.0;
     std::vector<float> inputEnvelope, dripEnvelope, dispersionDampingState, tailDampingState;
+    // Real spring dispersion is a pure-phase (allpass) phenomenon -- higher
+    // frequencies genuinely travel faster through the coiled wire, with no
+    // magnitude change (Valimaki/Parker/Abel, "Parametric Spring
+    // Reverberation Effect", JAES 2010). The existing dispersionBuffer taps
+    // above already provide the large-scale (several-ms) delay spread across
+    // 2-3 springs that gives the chirp its size; this cascade adds the
+    // textbook-correct allpass mechanism as fine dispersion within each of
+    // those taps, rather than the pure damped-delay coloring they had alone.
+    static constexpr int numAllpassStages = 64;
+    std::array<std::array<float, numAllpassStages>, 3> dispersionAllpassState {};
     float decayAmount = 0.5f, dwellAmount = 0.2f, dripAmount = 0.2f, toneAmount = 0.6f;
     float cachedToneHz = -1.0f;
     float dripDetectorCoefficient = 0.0f;

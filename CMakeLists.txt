@@ -98,15 +98,18 @@ if(ROCKALIZER_BUILD_TESTS)
         Tests/DspValidation.cpp
         Source/DSP/ChorusModule.cpp Source/DSP/ChorusModule.h
         Source/DSP/EchoModule.cpp Source/DSP/EchoModule.h
+        Source/DSP/SpringModule.cpp Source/DSP/SpringModule.h
         Source/DSP/TapeModule.cpp Source/DSP/TapeModule.h
         Source/DSP/TremoloModule.cpp Source/DSP/TremoloModule.h
     )
     target_include_directories(RockalizerDSPTests PRIVATE Source Source/DSP)
     target_compile_features(RockalizerDSPTests PRIVATE cxx_std_17)
     target_link_libraries(RockalizerDSPTests PRIVATE
+        RockalizerData
         juce::juce_audio_basics
         juce::juce_audio_formats
         juce::juce_dsp
+        juce::juce_events
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags
     )
