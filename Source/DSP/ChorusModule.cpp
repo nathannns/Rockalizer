@@ -154,12 +154,23 @@ void ChorusModule::process (juce::AudioBuffer<float>& buffer)
         const auto phaseSin = std::sin (lfoPhase);
         const auto phaseCos = std::cos (lfoPhase);
         const auto slowSin = std::sin (secondaryPhase);
+        const auto slowCos = std::cos (secondaryPhase);
         // Chorus keeps broad stereo phase separation. Flanger converges to a
-        // shared sweep so it remains focused rather than auto-panning.
-        const auto stereoPhase = juce::MathConstants<float>::pi * 0.72f
-                               * (1.0f - mode * 0.985f);
+        // shared sweep so it remains focused rather than auto-panning. The
+        // offset is expressed as a real-time lag rather than a fraction of
+        // the LFO cycle: chorus mode's rate can be an order of magnitude
+        // slower than flanger's, so a fixed phase fraction would translate
+        // into a multi-second channel lag and leave one side louder than the
+        // other for long stretches instead of a genuine decorrelated width.
+        const auto stereoOffsetSeconds = 0.020f * (1.0f - mode * 0.985f);
+        const auto stereoPhase = juce::jmin (juce::MathConstants<float>::pi,
+            juce::MathConstants<float>::twoPi * rate * stereoOffsetSeconds);
         const auto stereoSin = std::sin (stereoPhase);
         const auto stereoCos = std::cos (stereoPhase);
+        const auto secondaryStereoPhase = juce::jmin (juce::MathConstants<float>::pi,
+            juce::MathConstants<float>::twoPi * rate * 0.37f * stereoOffsetSeconds);
+        const auto secondaryStereoSin = std::sin (secondaryStereoPhase);
+        const auto secondaryStereoCos = std::cos (secondaryStereoPhase);
 
         for (int channel = 0; channel < channels; ++channel)
         {
@@ -168,7 +179,8 @@ void ChorusModule::process (juce::AudioBuffer<float>& buffer)
             const auto voiceB = channel == 0 ? phaseCos
                                               : phaseCos * stereoCos - phaseSin * stereoSin;
             const auto voiceC = -voiceA;
-            const auto voiceD = channel == 0 ? slowSin : -slowSin;
+            const auto voiceD = channel == 0 ? slowSin
+                                              : slowSin * secondaryStereoCos + slowCos * secondaryStereoSin;
             const auto tapA = readDelay (channel, juce::jmax (1.0f, baseDelayA + voiceA * depthSamples));
             const auto tapB = readDelay (channel, juce::jmax (1.0f, baseDelayB - voiceB * depthSamples * 0.68f));
             const auto tapC = readDelay (channel, juce::jmax (1.0f, baseDelayC + voiceC * depthSamples * 0.44f));
