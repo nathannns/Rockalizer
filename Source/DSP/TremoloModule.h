@@ -2,6 +2,15 @@
 
 #include <JuceHeader.h>
 
+// Tweed-era bias-modulation tremolo. A single LFO shifts the preamp tube's
+// grid bias, and because a triode's transconductance falls off increasingly
+// steeply as bias approaches cutoff, an even symmetric sine bias swing does
+// NOT produce a symmetric gain swing: the half-cycle swinging toward cutoff
+// dips with accelerating speed, while the half swinging back toward the
+// tube's normal operating point recovers more gently, tapering as it nears
+// the ceiling it can't exceed (gain is always <=1 — bias modulation only
+// ever *reduces* gain from the unbiased point, never boosts past it). See
+// TremoloModule.cpp for the shaping curve.
 class TremoloModule
 {
 public:
