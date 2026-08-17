@@ -10,6 +10,7 @@ void TapeModule::prepare (const juce::dsp::ProcessSpec& spec)
     envelope.assign (channelCount, 0.0f); toneState.assign (channelCount, 0.0f);
     detectorLowState.assign (channelCount, 0.0f); magnetisationState.assign (channelCount, 0.0f);
     bassState.assign (channelCount, 0.0f); midState.assign (channelCount, 0.0f);
+    previousDrivenState.assign (channelCount, 0.0f);
     oversampling2x = std::make_unique<juce::dsp::Oversampling<float>> (
         static_cast<size_t> (channels), 1,
         juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, false);
@@ -31,6 +32,7 @@ void TapeModule::reset()
     std::fill (toneState.begin(), toneState.end(), 0.0f);
     std::fill (bassState.begin(), bassState.end(), 0.0f);
     std::fill (midState.begin(), midState.end(), 0.0f);
+    std::fill (previousDrivenState.begin(), previousDrivenState.end(), 0.0f);
     wetMix.setCurrentAndTargetValue (0.0f);
     if (oversampling2x != nullptr) oversampling2x->reset();
     if (oversampling4x != nullptr) oversampling4x->reset();
@@ -188,16 +190,33 @@ void TapeModule::processCore (juce::AudioBuffer<float>& buffer, double processin
             // recorder rather than behaving as an ordinary volume control.
             const auto inputDb = tapeAmount * (cassetteMode ? 29.0f : 23.0f);
             const auto inputGain = juce::Decibels::decibelsToGain (inputDb);
+            // Computed once and reused below (was two separate decibelsToGain
+            // calls for the exact same value) -- same result, one fewer
+            // transcendental call per channel per sample.
+            const auto inverseInputGain = 1.0f / inputGain;
             const auto driven = x * inputGain;
-            const auto preSaturationBody = std::tanh (driven * 0.55f)
-                                         * juce::Decibels::decibelsToGain (-inputDb);
+            const auto preSaturationBody = std::tanh (driven * 0.55f) * inverseInputGain;
             const auto distortionAmount = std::pow (tapeAmount, 1.12f);
             const auto bias = distortionAmount * (cassetteMode ? 0.105f : 0.032f);
             const auto shape = 1.0f + distortionAmount * (cassetteMode ? 3.65f : 2.60f)
                                      + effectiveAge * (cassetteMode ? 0.45f : 0.24f);
-            const auto biasTanh = std::tanh (bias);
+
+            // Real magnetic hysteresis is fundamentally direction-dependent --
+            // a tape's response to a rising field differs from its response to
+            // a falling one, and that asymmetry widens the harder the tape is
+            // driven. Shift the curve's effective bias by the sign of the
+            // field's rate of change, with a width that grows with Drive, so
+            // the loop genuinely opens up (and gets more odd-harmonic/fuzzy)
+            // at high Drive as an emergent property of the same curve, rather
+            // than the direction-blind one-pole "magnetisation memory" alone.
+            auto& previousDriven = previousDrivenState[static_cast<size_t> (channel)];
+            const auto direction = (driven - previousDriven) >= 0.0f ? 1.0f : -1.0f;
+            previousDriven = driven;
+            const auto hysteresisWidth = distortionAmount * (cassetteMode ? 0.14f : 0.09f);
+            const auto directionalBias = bias + direction * hysteresisWidth;
+            const auto biasTanh = std::tanh (directionalBias);
             const auto smallSignalSlope = shape * (1.0f - biasTanh * biasTanh);
-            const auto anhysteretic = (std::tanh (driven * shape + bias) - biasTanh)
+            const auto anhysteretic = (std::tanh (driven * shape + directionalBias) - biasTanh)
                                     / juce::jmax (0.1f, smallSignalSlope);
             auto& magnetisation = magnetisationState[static_cast<size_t> (channel)];
             magnetisation += magnetisationCoefficient * (anhysteretic - magnetisation);
@@ -207,7 +226,7 @@ void TapeModule::processCore (juce::AudioBuffer<float>& buffer, double processin
             // Cancel the record gain for small signals. Drive therefore lowers
             // headroom instead of acting like a volume knob; only peaks that
             // approach the magnetic ceiling are compressed and saturated.
-            x *= juce::Decibels::decibelsToGain (-inputDb);
+            x *= inverseInputGain;
 
             // Above roughly 78% Drive, blend in a small, level-compensated
             // magnetic-overload edge. It adds the requested fuzzy hair only

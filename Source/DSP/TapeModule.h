@@ -19,6 +19,10 @@ private:
     juce::SmoothedValue<float> wetMix;
     std::vector<float> envelope, detectorLowState, magnetisationState;
     std::vector<float> toneState, bassState, midState;
+    // Previous sample's driven (post-record-gain) value per channel, so the
+    // saturation curve can tell whether the field is currently rising or
+    // falling -- the actual defining signature of magnetic hysteresis.
+    std::vector<float> previousDrivenState;
     double sampleRate = 44100.0;
     int writeIndex = 0, tapeType = studio, oversamplingChoice = 0;
     int validSamples = 0;
