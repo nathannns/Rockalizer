@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "Antialiasing.h"
 
 class ChorusModule
 {
@@ -21,6 +22,13 @@ private:
     juce::AudioBuffer<float> delayBuffer;
     juce::SmoothedValue<float> rateValue, depthValue, widthValue, wetMix, flangerBlend, aggressionValue;
     std::vector<float> toneState, warmBodyState, crossLowState, feedbackState, companderEnvelope;
+    // Antialiased (ADAA, see Antialiasing.h) versions of the two feedback-
+    // loop nonlinearities: the BBD input saturation (always active
+    // whenever Chorus is wet, every sample) and the Chorus-mode rounding
+    // stage, whose output reaches the next sample's feedback via
+    // feedbackState below.
+    AdaaTanh bbdSaturation[2];
+    AdaaTanh chorusRounding[2];
     double sampleRate = 44100.0;
     int writeIndex = 0;
     int validSamples = 0;

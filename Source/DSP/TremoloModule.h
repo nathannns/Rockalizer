@@ -17,6 +17,7 @@ public:
     void prepare (const juce::dsp::ProcessSpec& spec);
     void reset();
     void setAmount (float amountPercent);
+    void setRate (float rateHz);
     void process (juce::AudioBuffer<float>& buffer);
     bool isWetTransitionActive() const noexcept
     {
@@ -25,6 +26,7 @@ public:
 
 private:
     juce::SmoothedValue<float> amount;
+    juce::SmoothedValue<float> rate;
     double sampleRate = 44100.0;
     float phase = 0.0f;
 };

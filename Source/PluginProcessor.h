@@ -2,7 +2,9 @@
 
 #include <JuceHeader.h>
 #include "DSP/ChorusModule.h"
+#include "DSP/DoublerModule.h"
 #include "DSP/EchoModule.h"
+#include "DSP/NoiseGateModule.h"
 #include "DSP/TapeModule.h"
 #include "DSP/SpringModule.h"
 #include "DSP/TremoloModule.h"
@@ -60,19 +62,16 @@ private:
     juce::dsp::StateVariableTPTFilter<float> lowCutFilter;
     juce::dsp::StateVariableTPTFilter<float> highCutFilter;
     ChorusModule chorusModule;
+    DoublerModule doublerModule;
     EchoModule echoModule;
+    NoiseGateModule noiseGateModule;
     TapeModule tapeModule;
     SpringModule springModule;
     TremoloModule tremoloModule;
     juce::AudioBuffer<float> globalDryBuffer;
     juce::SmoothedValue<float> globalWet;
-    std::array<float, 3> noiseGateBandEnvelope { 0.0f, 0.0f, 0.0f };
-    float noiseGateLowState = 0.0f;
-    float noiseGateMidState = 0.0f;
-    float noiseGateGain = 1.0f;
-    int noiseGateHoldSamples = 0;
-    bool noiseGateOpen = true;
     bool tapeWasActive = false;
+    bool doublerWasActive = false;
     bool chorusWasActive = false;
     bool tremoloWasActive = false;
     bool echoWasActive = false;

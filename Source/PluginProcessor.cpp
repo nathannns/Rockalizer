@@ -83,6 +83,7 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
                                          "tremolo" })
             set (parameterID, 0.0f);
         set ("doubler", 0.0f);
+        set ("tremoloRate", 3.20f);
         set ("chorusTone", 1000.0f);
         set ("chorusRate", 0.05f);
         set ("echoTone", 1200.0f);
@@ -434,6 +435,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::cr
         juce::ParameterID { "tremolo", 1 }, "Tremolo",
         juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, 0.0f,
         juce::AudioParameterFloatAttributes().withLabel ("%")));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "tremoloRate", 1 }, "Tremolo Rate",
+        juce::NormalisableRange<float> { 0.5f, 10.0f, 0.01f, 0.5f }, 3.20f,
+        juce::AudioParameterFloatAttributes().withLabel ("Hz")));
     layout.add (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { "tremoloOn", 1 }, "Tremolo On", false));
 
@@ -534,7 +539,9 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     lowCutFilter.prepare (spec);
     highCutFilter.prepare (spec);
     chorusModule.prepare (spec);
+    doublerModule.prepare (spec);
     echoModule.prepare (spec);
+    noiseGateModule.prepare (spec);
     tapeModule.prepare (spec);
     springModule.prepare (spec);
     tremoloModule.prepare (spec);
@@ -542,11 +549,6 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     globalDryBuffer.setSize (getTotalNumOutputChannels(), samplesPerBlock, false, false, true);
     globalWet.reset (sampleRate, 0.02);
     globalWet.setCurrentAndTargetValue (readParameter ("globalOn") > 0.5f ? 1.0f : 0.0f);
-    noiseGateBandEnvelope.fill (0.0f);
-    noiseGateLowState = noiseGateMidState = 0.0f;
-    noiseGateGain = 1.0f;
-    noiseGateHoldSamples = 0;
-    noiseGateOpen = true;
 
     inputGain.setRampDurationSeconds (0.02);
     outputGain.setRampDurationSeconds (0.02);
@@ -558,7 +560,9 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     lowCutFilter.reset();
     highCutFilter.reset();
     chorusModule.reset();
+    doublerModule.reset();
     echoModule.reset();
+    noiseGateModule.reset();
     tapeModule.reset();
     springModule.reset();
     tremoloModule.reset();
@@ -629,86 +633,6 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     if (readParameter ("inputLevel") > 0.5f)
         buffer.applyGain (juce::Decibels::decibelsToGain (6.0f));
 
-    // Guitar-focused, stereo-linked downward expander. Three frequency-trimmed
-    // detector bands keep fundamentals, pick attack and upper harmonics equally
-    // capable of opening the gate. Hysteresis and hold prevent chatter, while
-    // the audio path itself remains full-band and phase-transparent.
-    const auto noiseCut = readParameter ("noiseCut") * 0.01f;
-    const auto noiseGateEnabled = readParameter ("noiseGateOn") > 0.5f;
-    if (noiseGateEnabled && noiseCut > 0.0001f)
-    {
-        const auto openThresholdDb = juce::jmap (noiseCut, -78.0f, -32.0f);
-        const auto closeThresholdDb = openThresholdDb - 6.0f;
-        const auto detectorAttack = std::exp (-1.0f / static_cast<float> (currentSampleRate * 0.0012));
-        const auto detectorRelease = std::exp (-1.0f / static_cast<float> (currentSampleRate * 0.085));
-        const auto gateAttack = std::exp (-1.0f / static_cast<float> (currentSampleRate * 0.0008));
-        const auto gateRelease = std::exp (-1.0f / static_cast<float> (currentSampleRate * 0.180));
-        const auto lowCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi * 180.0f
-                                                     / static_cast<float> (currentSampleRate));
-        const auto midCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi * 2600.0f
-                                                     / static_cast<float> (currentSampleRate));
-        const auto holdLength = juce::roundToInt (currentSampleRate * 0.045);
-        const std::array<float, 3> bandOffsetsDb { 2.0f, 0.0f, -2.0f };
-
-        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
-        {
-            float detector = 0.0f;
-            for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
-            {
-                const auto candidate = buffer.getSample (channel, sample);
-                if (std::abs (candidate) > std::abs (detector))
-                    detector = candidate;
-            }
-
-            noiseGateLowState += lowCoefficient * (detector - noiseGateLowState);
-            noiseGateMidState += midCoefficient * (detector - noiseGateMidState);
-            const std::array<float, 3> bands {
-                std::abs (noiseGateLowState),
-                std::abs (noiseGateMidState - noiseGateLowState),
-                std::abs (detector - noiseGateMidState)
-            };
-
-            float activityDb = -120.0f;
-            for (size_t band = 0; band < bands.size(); ++band)
-            {
-                auto& envelope = noiseGateBandEnvelope[band];
-                const auto coefficient = bands[band] > envelope ? detectorAttack : detectorRelease;
-                envelope = coefficient * envelope + (1.0f - coefficient) * bands[band];
-                activityDb = juce::jmax (activityDb,
-                    juce::Decibels::gainToDecibels (envelope, -120.0f) - bandOffsetsDb[band]);
-            }
-
-            if (activityDb >= openThresholdDb)
-            {
-                noiseGateOpen = true;
-                noiseGateHoldSamples = holdLength;
-            }
-            else if (noiseGateHoldSamples > 0)
-                --noiseGateHoldSamples;
-            else if (activityDb < closeThresholdDb)
-                noiseGateOpen = false;
-
-            const auto floorDb = juce::jmap (noiseCut, -18.0f, -72.0f);
-            const auto belowDb = juce::jmax (0.0f, closeThresholdDb - activityDb);
-            const auto closedGainDb = juce::jmax (floorDb, -belowDb * 2.2f);
-            const auto targetGain = noiseGateOpen ? 1.0f
-                                                  : juce::Decibels::decibelsToGain (closedGainDb);
-            const auto gainCoefficient = targetGain > noiseGateGain ? gateAttack : gateRelease;
-            noiseGateGain = gainCoefficient * noiseGateGain + (1.0f - gainCoefficient) * targetGain;
-
-            for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
-                buffer.setSample (channel, sample, buffer.getSample (channel, sample) * noiseGateGain);
-        }
-    }
-    else
-    {
-        noiseGateBandEnvelope.fill (0.0f);
-        noiseGateLowState = noiseGateMidState = 0.0f;
-        noiseGateGain = 1.0f;
-        noiseGateHoldSamples = 0;
-        noiseGateOpen = true;
-    }
-
     // Reject invalid host/input samples before they can enter feedback paths.
     for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
         for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
@@ -718,10 +642,22 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                 buffer.setSample (channel, sample, 0.0f);
         }
 
+    // Captured before the noise gate runs, so that disengaging Global On is a
+    // true bypass of the whole chain -- including the gate -- rather than a
+    // crossfade back to a signal the gate has already shaped.
     jassert (buffer.getNumSamples() <= globalDryBuffer.getNumSamples());
     const auto channels = juce::jmin (buffer.getNumChannels(), globalDryBuffer.getNumChannels());
     for (int channel = 0; channel < channels; ++channel)
         globalDryBuffer.copyFrom (channel, 0, buffer, channel, 0, buffer.getNumSamples());
+
+    // Guitar-focused, stereo-linked downward expander (NoiseGateModule, shared
+    // with Threadline). Three frequency-trimmed detector bands keep
+    // fundamentals, pick attack and upper harmonics equally capable of opening
+    // the gate. Hysteresis and hold prevent chatter, while the audio path
+    // itself remains full-band and phase-transparent.
+    noiseGateModule.setAmount (readParameter ("noiseCut"));
+    noiseGateModule.setEnabled (readParameter ("noiseGateOn") > 0.5f);
+    noiseGateModule.process (buffer);
 
     float inputPeak = 0.0f;
     for (int channel = 0; channel < channels; ++channel)
@@ -736,11 +672,12 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         if (! globalWet.isSmoothing() && globalWet.getCurrentValue() <= 0.00001f)
         {
             tapeModule.reset();
+            doublerModule.reset();
             tremoloModule.reset();
             chorusModule.reset();
             echoModule.reset();
             springModule.reset();
-            tapeWasActive = chorusWasActive = tremoloWasActive = false;
+            tapeWasActive = doublerWasActive = chorusWasActive = tremoloWasActive = false;
             echoWasActive = springWasActive = false;
             presetTransitionState = 2;
             globalWet.setTargetValue (requestedGlobalWet);
@@ -760,11 +697,12 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         if (globalWasActive)
         {
             tapeModule.reset();
+            doublerModule.reset();
             tremoloModule.reset();
             chorusModule.reset();
             echoModule.reset();
             springModule.reset();
-            tapeWasActive = chorusWasActive = tremoloWasActive = false;
+            tapeWasActive = doublerWasActive = chorusWasActive = tremoloWasActive = false;
             echoWasActive = springWasActive = false;
         }
         globalWasActive = false;
@@ -804,6 +742,30 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // reset() directly, which snaps the internal wet-mix SmoothedValue
     // straight to 0 with no ramp -- a real, audible click if toggled off
     // mid-note while any of these are still audibly wet.
+
+    // Doubler now runs first, ahead of Tape: it widens the raw input into a
+    // detuned stereo pair before Tape's saturation/hysteresis colors it, so
+    // Tape (and everything after it) processes one coherent doubled-stereo
+    // source rather than doubling an already-driven, tone-shaped signal.
+    const auto doublerActive = readParameter ("doublerOn") > 0.5f
+                            && readParameter ("doubler") > 0.001f;
+    if (doublerActive)
+    {
+        doublerModule.setAmount (readParameter ("doubler"));
+        doublerModule.process (buffer);
+        doublerWasActive = true;
+    }
+    else if (doublerWasActive)
+    {
+        doublerModule.setAmount (0.0f);
+        doublerModule.process (buffer);
+        if (! doublerModule.isWetTransitionActive())
+        {
+            doublerModule.reset();
+            doublerWasActive = false;
+        }
+    }
+
     const auto tapeActive = readParameter ("tapeOn") > 0.5f;
     if (tapeActive)
     {
@@ -835,12 +797,14 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     if (tremoloActive)
     {
         tremoloModule.setAmount (readParameter ("tremolo"));
+        tremoloModule.setRate (readParameter ("tremoloRate"));
         tremoloModule.process (buffer);
         tremoloWasActive = true;
     }
     else if (tremoloWasActive)
     {
         tremoloModule.setAmount (0.0f);
+        tremoloModule.setRate (readParameter ("tremoloRate"));
         tremoloModule.process (buffer);
         if (! tremoloModule.isWetTransitionActive())
         {

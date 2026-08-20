@@ -231,13 +231,26 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     juce::Label unusedLowCutLabel;
     juce::Label unusedHighCutLabel;
     juce::Label unusedTremoloLabel;
+    juce::Label unusedTremoloRateLabel;
     juce::Label unusedOutputLabel;
+    juce::Label unusedDoublerLabel;
     configureKnob (noiseCutSlider, unusedNoiseGateLabel, {}, " %");
     configureKnob (inputSlider, unusedInputLabel, {}, " dB");
     configureKnob (lowCutSlider, unusedLowCutLabel, {}, " Hz");
     configureKnob (highCutSlider, unusedHighCutLabel, {}, " Hz");
     configureKnob (tremoloSlider, unusedTremoloLabel, {}, " %");
+    configureKnob (tremoloRateSlider, unusedTremoloRateLabel, {}, " Hz");
+    // Narrower text boxes: Tremolo now shares its footer slot between two
+    // knobs (Amount/Rate) instead of the single full-width knob every other
+    // footer control gets, so the default 84px readout would collide with
+    // its neighbour.
+    tremoloSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 64, 18);
+    tremoloRateSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 64, 18);
     configureKnob (outputSlider, unusedOutputLabel, {}, " dB");
+    configureKnob (doublerSlider, unusedDoublerLabel, {}, " %");
+    // Narrower than a full-width footer knob to fit between Hi Cut and
+    // Tremolo -- see resized().
+    doublerSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 60, 18);
 
     configureKnob (chorusRateSlider, chorusRateLabel, "RATE", " Hz");
     configureKnob (chorusDepthSlider, chorusDepthLabel, "DEPTH", " %");
@@ -249,6 +262,7 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     lowCutAttachment = std::make_unique<SliderAttachment> (processor.parameters, "lowCut", lowCutSlider);
     highCutAttachment = std::make_unique<SliderAttachment> (processor.parameters, "highCut", highCutSlider);
     tremoloAttachment = std::make_unique<SliderAttachment> (processor.parameters, "tremolo", tremoloSlider);
+    tremoloRateAttachment = std::make_unique<SliderAttachment> (processor.parameters, "tremoloRate", tremoloRateSlider);
     tremoloBypassButton.setClickingTogglesState (true);
     tremoloBypassButton.setColour (juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
     tremoloBypassButton.setColour (juce::TextButton::buttonOnColourId, juce::Colours::transparentBlack);
@@ -260,6 +274,17 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
                                                                   "tremoloOn",
                                                                   tremoloBypassButton);
     outputAttachment = std::make_unique<SliderAttachment> (processor.parameters, "outputGain", outputSlider);
+    doublerAttachment = std::make_unique<SliderAttachment> (processor.parameters, "doubler", doublerSlider);
+    doublerBypassButton.setClickingTogglesState (true);
+    doublerBypassButton.setColour (juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
+    doublerBypassButton.setColour (juce::TextButton::buttonOnColourId, juce::Colours::transparentBlack);
+    doublerBypassButton.setColour (juce::TextButton::textColourOffId, secondaryText.darker (0.55f));
+    doublerBypassButton.setColour (juce::TextButton::textColourOnId, primaryText);
+    doublerBypassButton.setTooltip ("Detuned stereo doubler on/off");
+    addAndMakeVisible (doublerBypassButton);
+    doublerBypassAttachment = std::make_unique<ButtonAttachment> (processor.parameters,
+                                                                   "doublerOn",
+                                                                   doublerBypassButton);
     chorusRateAttachment = std::make_unique<SliderAttachment> (processor.parameters, "chorusRate", chorusRateSlider);
     chorusDepthAttachment = std::make_unique<SliderAttachment> (processor.parameters, "chorusDepth", chorusDepthSlider);
     chorusWidthAttachment = std::make_unique<SliderAttachment> (processor.parameters, "chorusWidth", chorusWidthSlider);
@@ -563,10 +588,14 @@ void RockalizerAudioProcessorEditor::timerCallback()
     const auto echoEnabled = processor.parameters.getRawParameterValue ("echoOn")->load() > 0.5f;
     const auto springEnabled = processor.parameters.getRawParameterValue ("springOn")->load() > 0.5f;
     const auto tremoloEnabled = processor.parameters.getRawParameterValue ("tremoloOn")->load() > 0.5f;
+    const auto doublerEnabled = processor.parameters.getRawParameterValue ("doublerOn")->load() > 0.5f;
     const auto noiseGateEnabled = processor.parameters.getRawParameterValue ("noiseGateOn")->load() > 0.5f;
     const auto globalEnabled = processor.parameters.getRawParameterValue ("globalOn")->load() > 0.5f;
     tremoloSlider.setAlpha (globalEnabled && tremoloEnabled ? 1.0f : 0.28f);
+    tremoloRateSlider.setAlpha (globalEnabled && tremoloEnabled ? 1.0f : 0.28f);
     tremoloBypassButton.setAlpha (globalEnabled ? 1.0f : 0.28f);
+    doublerSlider.setAlpha (globalEnabled && doublerEnabled ? 1.0f : 0.28f);
+    doublerBypassButton.setAlpha (globalEnabled ? 1.0f : 0.28f);
     noiseCutSlider.setAlpha (noiseGateEnabled ? 1.0f : 0.28f);
     const auto storedFlangerMode = juce::roundToInt (
         processor.parameters.getRawParameterValue ("chorusFlangerMode")->load());
@@ -796,7 +825,7 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
     g.drawText ("INPUT", 305, labelY, 110, 20, juce::Justification::centred);
     g.drawText ("LOW CUT", 445, labelY, 110, 20, juce::Justification::centred);
     g.drawText ("HI CUT", 585, labelY, 110, 20, juce::Justification::centred);
-    g.drawText ("OUTPUT", 980, labelY, 110, 20, juce::Justification::centred);
+    g.drawText ("OUTPUT", 1060, labelY, 110, 20, juce::Justification::centred);
 
     const auto drawMeter = [&g] (juce::Rectangle<float> meter, float levelDb, bool clipped)
     {
@@ -812,7 +841,7 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
         g.drawRoundedRectangle (meter, 4.0f, clipped ? 2.0f : 1.0f);
     };
     drawMeter ({ 175.0f, height - 66.0f, 115.0f, 10.0f }, displayInputDb, inputClipped);
-    drawMeter ({ 850.0f, height - 66.0f, 115.0f, 10.0f }, displayOutputDb, outputClipped);
+    drawMeter ({ 937.0f, height - 66.0f, 115.0f, 10.0f }, displayOutputDb, outputClipped);
 }
 
 void RockalizerAudioProcessorEditor::resized()
@@ -836,12 +865,32 @@ void RockalizerAudioProcessorEditor::resized()
     place (inputSlider, 305, 574);
     place (lowCutSlider, 445, 574);
     place (highCutSlider, 585, 574);
-    place (tremoloSlider, 725, 574);
-    tremoloBypassButton.setBounds (juce::roundToInt (725 * scaleX),
+    // Doubler and Tremolo's footer slots are narrower knobs squeezed into
+    // the gap between Hi Cut (ends at 695) and Output. This visual grouping
+    // (Hi Cut, Doubler, Tremolo Rate/Amount, then the output meter and
+    // Output) is a UI-space choice, not a signal-chain diagram -- Doubler
+    // actually runs first in the audio chain, ahead of Tape (see
+    // PluginProcessor::processBlock), independent of where its knob sits
+    // in this row.
+    const auto placeNarrow = [scaleX, scaleY] (juce::Slider& slider, int x, int y, int w)
+    {
+        slider.setBounds (juce::roundToInt (x * scaleX),
+                          juce::roundToInt (y * scaleY),
+                          juce::roundToInt (w * scaleX),
+                          juce::roundToInt (78 * scaleY));
+    };
+    placeNarrow (doublerSlider, 703, 574, 70);
+    doublerBypassButton.setBounds (juce::roundToInt (703 * scaleX),
                                    juce::roundToInt (548 * scaleY),
-                                   juce::roundToInt (110 * scaleX),
+                                   juce::roundToInt (70 * scaleX),
                                    juce::roundToInt (18 * scaleY));
-    place (outputSlider, 980, 574);
+    placeNarrow (tremoloRateSlider, 781, 574, 70);
+    placeNarrow (tremoloSlider, 855, 574, 70);
+    tremoloBypassButton.setBounds (juce::roundToInt (781 * scaleX),
+                                   juce::roundToInt (548 * scaleY),
+                                   juce::roundToInt (144 * scaleX),
+                                   juce::roundToInt (18 * scaleY));
+    place (outputSlider, 1060, 574);
     optionsGroup.setBounds (juce::roundToInt (898 * scaleX), juce::roundToInt (82 * scaleY),
                             juce::roundToInt (282 * scaleX), juce::roundToInt (132 * scaleY));
     input1Button.setBounds (juce::roundToInt (12 * scaleX), juce::roundToInt (30 * scaleY),

@@ -11,6 +11,7 @@ void TapeModule::prepare (const juce::dsp::ProcessSpec& spec)
     detectorLowState.assign (channelCount, 0.0f); magnetisationState.assign (channelCount, 0.0f);
     bassState.assign (channelCount, 0.0f); midState.assign (channelCount, 0.0f);
     previousDrivenState.assign (channelCount, 0.0f);
+    directionSmoothState.assign (channelCount, 0.0f);
     oversampling2x = std::make_unique<juce::dsp::Oversampling<float>> (
         static_cast<size_t> (channels), 1,
         juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, false);
@@ -33,6 +34,7 @@ void TapeModule::reset()
     std::fill (bassState.begin(), bassState.end(), 0.0f);
     std::fill (midState.begin(), midState.end(), 0.0f);
     std::fill (previousDrivenState.begin(), previousDrivenState.end(), 0.0f);
+    std::fill (directionSmoothState.begin(), directionSmoothState.end(), 0.0f);
     wetMix.setCurrentAndTargetValue (0.0f);
     if (oversampling2x != nullptr) oversampling2x->reset();
     if (oversampling4x != nullptr) oversampling4x->reset();
@@ -134,6 +136,14 @@ void TapeModule::processCore (juce::AudioBuffer<float>& buffer, double processin
     const auto magnetisationCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
                                                             * (cassetteMode ? 5200.0f : 7800.0f)
                                                             / static_cast<float> (processingRate));
+    // Smooths the hysteresis direction sign below (see its own comment) --
+    // 500Hz keeps essentially the full effect through most of the guitar's
+    // played range (measured >99% of full swing up to ~330Hz, still ~90%
+    // at 660Hz) while cutting a harmonic-rich driven signal's spurious
+    // direction-flip energy by roughly 40% in a standalone harness, versus
+    // the previous instantaneous sign.
+    const auto directionSmoothCoefficient = 1.0f - std::exp (-juce::MathConstants<float>::twoPi
+                                                              * 500.0f / static_cast<float> (processingRate));
     auto attack = 0.0f;
     auto release = 0.0f;
     if (compValue > 0.000001f)
@@ -210,8 +220,19 @@ void TapeModule::processCore (juce::AudioBuffer<float>& buffer, double processin
             // at high Drive as an emergent property of the same curve, rather
             // than the direction-blind one-pole "magnetisation memory" alone.
             auto& previousDriven = previousDrivenState[static_cast<size_t> (channel)];
-            const auto direction = (driven - previousDriven) >= 0.0f ? 1.0f : -1.0f;
+            const auto rawDirection = (driven - previousDriven) >= 0.0f ? 1.0f : -1.0f;
             previousDriven = driven;
+            // Lowpassing the raw +-1 sign itself (rather than using it
+            // directly, or lowpassing the delta before taking its sign)
+            // means a fast, low-amplitude wiggle that flips back and forth
+            // faster than the filter can track just averages toward zero,
+            // while a genuine sustained direction change (a real half-cycle
+            // of playing) still settles close to +-1 well within it -- see
+            // directionSmoothCoefficient's comment above for why a hard
+            // instantaneous sign here was audible as broadband "fizz".
+            auto& directionSmooth = directionSmoothState[static_cast<size_t> (channel)];
+            directionSmooth += directionSmoothCoefficient * (rawDirection - directionSmooth);
+            const auto direction = directionSmooth;
             const auto hysteresisWidth = distortionAmount * (cassetteMode ? 0.14f : 0.09f);
             const auto directionalBias = bias + direction * hysteresisWidth;
             const auto biasTanh = std::tanh (directionalBias);

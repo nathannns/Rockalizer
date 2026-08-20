@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Rockalizer VERSION 0.65.0 LANGUAGES C CXX)
+project(Rockalizer VERSION 0.66.0 LANGUAGES C CXX)
 
 include(FetchContent)
 
@@ -58,10 +58,14 @@ target_sources(Rockalizer
         Source/PluginEditor.h
         Source/PluginProcessor.cpp
         Source/PluginProcessor.h
+        Source/DSP/Antialiasing.h
         Source/DSP/ChorusModule.cpp
         Source/DSP/ChorusModule.h
+        Source/DSP/DoublerModule.cpp
+        Source/DSP/DoublerModule.h
         Source/DSP/EchoModule.cpp
         Source/DSP/EchoModule.h
+        Source/DSP/NoiseGateModule.h
         Source/DSP/TapeModule.cpp
         Source/DSP/TapeModule.h
         Source/DSP/SpringModule.cpp

@@ -31,10 +31,12 @@ void ChorusModule::reset()
     std::fill (crossLowState.begin(), crossLowState.end(), 0.0f);
     std::fill (feedbackState.begin(), feedbackState.end(), 0.0f);
     std::fill (companderEnvelope.begin(), companderEnvelope.end(), 0.0f);
+    for (auto& saturation : bbdSaturation) saturation.reset();
+    for (auto& rounding : chorusRounding) rounding.reset();
     writeIndex = 0;
     validSamples = 0;
     lfoPhase = 0.0f;
-    secondaryPhase = juce::MathConstants<float>::halfPi;
+    secondaryPhase = 0.0f;
     rateValue.setCurrentAndTargetValue (0.32f);
     depthValue.setCurrentAndTargetValue (0.75f);
     widthValue.setCurrentAndTargetValue (0.75f);
@@ -46,8 +48,11 @@ void ChorusModule::reset()
 void ChorusModule::setParameters (float rateHz, float depthPercent, float widthPercent,
                                   float toneHz, float mixPercent, bool enabled, int flangerMode)
 {
-    // Dimension-style range: slow, shallow dual modulation creates width and
-    // depth without the obvious pitch sweep of a conventional chorus.
+    // Dimension-style range: the SDD-320 itself runs its slow chorus modes
+    // (the two most commonly reached for -- the subtle "invisible width"
+    // Mode 1 and the slightly deeper Mode 2) at roughly a 2-4 second LFO
+    // cycle, ~0.25-0.5Hz. 0.20-0.55Hz keeps that ballpark as the centre of
+    // the Chorus rate range without boxing the knob in.
     const auto normalisedRate = juce::jlimit (0.0f, 1.0f, (rateHz - 0.05f) / 4.95f);
     const auto flange = juce::jlimit (0, 3, flangerMode);
     const auto flangerEnabled = flange > 0;
@@ -55,7 +60,7 @@ void ChorusModule::setParameters (float rateHz, float depthPercent, float widthP
         ? 1.45f + std::pow (normalisedRate, 0.70f) * 2.80f
         : (flange == 2 ? 1.10f + std::pow (normalisedRate, 0.70f) * 2.40f
         : (flange == 1 ? 0.58f + std::pow (normalisedRate, 0.70f) * 1.30f
-                       : 0.08f + std::pow (normalisedRate, 0.72f) * 0.62f)));
+                       : 0.20f + std::pow (normalisedRate, 0.72f) * 0.35f)));
     depthValue.setTargetValue (std::pow (juce::jlimit (0.0f, 1.0f, depthPercent * 0.01f), 0.72f));
     widthValue.setTargetValue (juce::jlimit (0.0f, 1.0f, widthPercent * 0.01f));
     const auto limitedToneHz = juce::jlimit (1800.0f, 16000.0f, toneHz);
@@ -82,17 +87,32 @@ void ChorusModule::setParameters (float rateHz, float depthPercent, float widthP
 
 float ChorusModule::readDelay (int channel, float distance) const
 {
-    if (distance > static_cast<float> (validSamples))
+    // 4-point Hermite (matching EchoModule::readDelay): Chorus's whole
+    // character rides on smooth, continuous delay-time modulation over a
+    // ~0.2-2.3ms sweep, which makes it the module most exposed to the
+    // slope discontinuities 2-point linear interpolation introduces --
+    // audible as alternating clicks, per Echo's own header comment on why
+    // it doesn't use linear either.
+    if (distance + 1.0f > static_cast<float> (validSamples))
         return 0.0f;
     const auto size = delayBuffer.getNumSamples();
     auto position = static_cast<float> (writeIndex) - distance;
     while (position < 0.0f) position += static_cast<float> (size);
     while (position >= static_cast<float> (size)) position -= static_cast<float> (size);
-    const auto first = static_cast<int> (position);
-    const auto second = (first + 1) % size;
-    return juce::jmap (position - static_cast<float> (first),
-                       delayBuffer.getSample (channel, first),
-                       delayBuffer.getSample (channel, second));
+    const auto index1 = static_cast<int> (position);
+    const auto index0 = (index1 - 1 + size) % size;
+    const auto index2 = (index1 + 1) % size;
+    const auto index3 = (index1 + 2) % size;
+    const auto fraction = position - static_cast<float> (index1);
+    const auto y0 = delayBuffer.getSample (channel, index0);
+    const auto y1 = delayBuffer.getSample (channel, index1);
+    const auto y2 = delayBuffer.getSample (channel, index2);
+    const auto y3 = delayBuffer.getSample (channel, index3);
+    const auto c0 = y1;
+    const auto c1 = 0.5f * (y2 - y0);
+    const auto c2 = y0 - 2.5f * y1 + 2.0f * y2 - 0.5f * y3;
+    const auto c3 = 0.5f * (y3 - y0) + 1.5f * (y1 - y2);
+    return ((c3 * fraction + c2) * fraction + c1) * fraction + c0;
 }
 
 void ChorusModule::process (juce::AudioBuffer<float>& buffer)
@@ -135,42 +155,63 @@ void ChorusModule::process (juce::AudioBuffer<float>& buffer)
             // smooth, glued movement associated with the rack circuit.
             const auto compressorGain = 1.0f / std::sqrt (1.0f + envelope * 2.8f);
             const auto bbdInput = original[channel] * compressorGain + crossFeedback * 1.08f;
-            delayBuffer.setSample (channel, writeIndex, std::tanh (bbdInput * 1.06f));
+            delayBuffer.setSample (channel, writeIndex, bbdSaturation[channel].process (bbdInput * 1.06f));
         }
 
         const auto rate = rateValue.getNextValue();
         const auto depth = depthValue.getNextValue();
         const auto width = widthValue.getNextValue();
         const auto mix = wetMix.getNextValue();
+        // Chorus depth is calibrated toward the SDD-320's documented ~8-12ms
+        // sweep window (a ~2ms swing around a ~10ms centre) rather than the
+        // shallower sweep this used to use.
         const auto depthSamples = static_cast<float> (sampleRate)
                                 * juce::jmap (mode,
-                                              0.00010f + depth * 0.00134f,
+                                              0.00020f + depth * 0.00230f,
                                               0.00018f + depth * 0.00135f)
                                 * (1.0f + aggression * 0.20f);
 
-        // Sine-derived voices have continuous velocity and acceleration. This
-        // removes the slightly mechanical corners of the previous triangle
-        // sweep while keeping three decorrelated Dimension-style delay taps.
-        const auto phaseSin = std::sin (lfoPhase);
-        const auto phaseCos = std::cos (lfoPhase);
-        const auto slowSin = std::sin (secondaryPhase);
-        const auto slowCos = std::cos (secondaryPhase);
-        // Chorus keeps broad stereo phase separation. Flanger converges to a
-        // shared sweep so it remains focused rather than auto-panning. The
-        // offset is expressed as a real-time lag rather than a fraction of
-        // the LFO cycle: chorus mode's rate can be an order of magnitude
-        // slower than flanger's, so a fixed phase fraction would translate
-        // into a multi-second channel lag and leave one side louder than the
-        // other for long stretches instead of a genuine decorrelated width.
-        const auto stereoOffsetSeconds = 0.020f * (1.0f - mode * 0.985f);
-        const auto stereoPhase = juce::jmin (juce::MathConstants<float>::pi,
-            juce::MathConstants<float>::twoPi * rate * stereoOffsetSeconds);
+        // The real SDD-320 drives two BBD lines from one LFO, one line taking
+        // the LFO signal and the other its exact inverse -- when one delay
+        // stretches the other shrinks by the same amount around a shared
+        // centre. That antiphase mirroring is what gives Dimension-style
+        // chorus its "3D, motionless" character. At chorus mode's slow rate
+        // (real units run ~0.25-0.5Hz) the two channels genuinely do sit
+        // apart in level for multi-second stretches before the LFO carries
+        // them back into balance -- that's the real unit's behaviour, not a
+        // defect, so it's only meaningful to judge stereo balance over a
+        // window long enough to average across the sweep.
+        //
+        // The Chorus-to-Flanger blend needs a relationship in between full
+        // antiphase and fully in-phase, and that has to be a phase ROTATION
+        // rather than an amplitude blend: scaling the right channel's voice
+        // by a fraction shrinks its modulation depth relative to the left
+        // channel's, which is a permanent, non-averaging channel imbalance
+        // at any in-between blend, not just a slow-converging one. A
+        // rotation keeps both channels' depth identical (sin/cos of a phase
+        // stay unit magnitude) no matter how the two are aligned. At exactly
+        // pi (chorus) that degenerates to plain negation -- the authentic,
+        // rate-independent case above -- while flanger modes rotate toward
+        // roughly in phase, converging quickly since their rate is much
+        // faster than chorus's, so it stays a focused comb rather than
+        // auto-panning.
+        const auto stereoPhase = juce::jmap (mode,
+            juce::MathConstants<float>::pi, juce::MathConstants<float>::pi * 0.015f);
         const auto stereoSin = std::sin (stereoPhase);
         const auto stereoCos = std::cos (stereoPhase);
-        const auto secondaryStereoPhase = juce::jmin (juce::MathConstants<float>::pi,
-            juce::MathConstants<float>::twoPi * rate * 0.37f * stereoOffsetSeconds);
-        const auto secondaryStereoSin = std::sin (secondaryStereoPhase);
-        const auto secondaryStereoCos = std::cos (secondaryStereoPhase);
+        // Roland's LFO is documented as a soft-clipped/trapezoidal sine
+        // rather than a pure one -- it spends more time near the delay
+        // extremes and less lingering through the zero crossing, which is
+        // part of the unit's recognisable tone.
+        const auto shapeLfo = [] (float value)
+        {
+            constexpr float amount = 1.6f;
+            return std::tanh (value * amount) / std::tanh (amount);
+        };
+        const auto phaseSin = shapeLfo (std::sin (lfoPhase));
+        const auto phaseCos = shapeLfo (std::cos (lfoPhase));
+        const auto slowSin = shapeLfo (std::sin (secondaryPhase));
+        const auto slowCos = shapeLfo (std::cos (secondaryPhase));
 
         for (int channel = 0; channel < channels; ++channel)
         {
@@ -180,7 +221,7 @@ void ChorusModule::process (juce::AudioBuffer<float>& buffer)
                                               : phaseCos * stereoCos - phaseSin * stereoSin;
             const auto voiceC = -voiceA;
             const auto voiceD = channel == 0 ? slowSin
-                                              : slowSin * secondaryStereoCos + slowCos * secondaryStereoSin;
+                                              : slowSin * stereoCos + slowCos * stereoSin;
             const auto tapA = readDelay (channel, juce::jmax (1.0f, baseDelayA + voiceA * depthSamples));
             const auto tapB = readDelay (channel, juce::jmax (1.0f, baseDelayB - voiceB * depthSamples * 0.68f));
             const auto tapC = readDelay (channel, juce::jmax (1.0f, baseDelayC + voiceC * depthSamples * 0.44f));
@@ -194,7 +235,7 @@ void ChorusModule::process (juce::AudioBuffer<float>& buffer)
             // three Dimension/JUNO-inspired delay voices into one ensemble.
             if (mode < 0.5f)
             {
-                const auto rounded = std::tanh (dimensionWet * 1.16f) / 1.16f;
+                const auto rounded = chorusRounding[channel].process (dimensionWet * 1.16f) / 1.16f;
                 dimensionWet = juce::jmap (0.30f, dimensionWet, rounded);
                 // A restrained low-mid return resembles the gentle spectral
                 // tilt of a BBD/compander path without muddying the dry guitar.

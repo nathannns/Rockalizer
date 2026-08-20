@@ -31,7 +31,10 @@ void SpringModule::prepare (const juce::dsp::ProcessSpec& spec)
     dripEnvelope.assign (static_cast<size_t> (channelCount), 0.0f);
     dispersionDampingState.assign (3, 0.0f);
     tailDampingState.assign (4, 0.0f);
-    wetMix.reset (spec.sampleRate, 0.03);
+    // Slower than the other modules' ~20-30ms wet-mix ramps: the spring's own
+    // decay can run several seconds long, so a fast fade reads as an abrupt
+    // mute of an audibly still-ringing tail rather than it dying away.
+    wetMix.reset (spec.sampleRate, 0.15);
     reset();
     triggerAsyncUpdate();
 }
@@ -45,6 +48,8 @@ void SpringModule::reset()
     std::fill (tailDampingState.begin(), tailDampingState.end(), 0.0f);
     for (auto& stages : dispersionAllpassState)
         stages.fill (0.0f);
+    for (auto& saturation : dispersionSaturation) saturation.reset();
+    for (auto& saturation : tailSaturation) saturation.reset();
     tailBuffer.clear();
     dispersionBuffer.clear();
     dispersionWriteIndex = 0;
@@ -262,7 +267,8 @@ void SpringModule::process (juce::AudioBuffer<float>& buffer)
             springTaps[spring] = damped;
             const auto drive = dispersedExcitation * (0.52f + dripAmount * 0.10f)
                              + damped * dispersionFeedback;
-            dispersionBuffer.setSample (spring, dispersionWriteIndex, std::tanh (drive));
+            dispersionBuffer.setSample (spring, dispersionWriteIndex,
+                dispersionSaturation[spring].process (drive));
         }
         const auto normalise = springCount == 3 ? 0.333f : 0.5f;
         const auto common = (springTaps[0] + springTaps[1] + springTaps[2]) * normalise;
@@ -297,16 +303,29 @@ void SpringModule::process (juce::AudioBuffer<float>& buffer)
             * (0.00016f + decayAmount * 0.00022f);
         for (int line = 0; line < 4; ++line)
         {
-            const auto delaySamples = juce::jmin (static_cast<float> (tailSize - 2),
+            // 4-point Hermite (matching EchoModule/ChorusModule::readDelay):
+            // this tail network is under continuous small (~7-18 sample)
+            // modulation depth, the same class of slope-discontinuity
+            // exposure linear interpolation caused elsewhere.
+            const auto delaySamples = juce::jmin (static_cast<float> (tailSize - 3),
                 static_cast<float> (sampleRate) * delayTimesMs[line] * 0.001f
                     + modulation[line] * modulationDepthSamples);
             auto readPosition = static_cast<float> (tailWriteIndex) - delaySamples;
             while (readPosition < 0.0f) readPosition += static_cast<float> (tailSize);
-            const auto first = static_cast<int> (readPosition) % tailSize;
-            const auto second = (first + 1) % tailSize;
-            delayed[line] = juce::jmap (readPosition - static_cast<float> (first),
-                                        tailBuffer.getSample (line, first),
-                                        tailBuffer.getSample (line, second));
+            const auto index1 = static_cast<int> (readPosition) % tailSize;
+            const auto index0 = (index1 - 1 + tailSize) % tailSize;
+            const auto index2 = (index1 + 1) % tailSize;
+            const auto index3 = (index1 + 2) % tailSize;
+            const auto fraction = readPosition - static_cast<float> (index1);
+            const auto y0 = tailBuffer.getSample (line, index0);
+            const auto y1 = tailBuffer.getSample (line, index1);
+            const auto y2 = tailBuffer.getSample (line, index2);
+            const auto y3 = tailBuffer.getSample (line, index3);
+            const auto c0 = y1;
+            const auto c1 = 0.5f * (y2 - y0);
+            const auto c2 = y0 - 2.5f * y1 + 2.0f * y2 - 0.5f * y3;
+            const auto c3 = 0.5f * (y3 - y0) + 1.5f * (y1 - y2);
+            delayed[line] = ((c3 * fraction + c2) * fraction + c1) * fraction + c0;
         }
 
         const float matrix[4] {
@@ -325,7 +344,7 @@ void SpringModule::process (juce::AudioBuffer<float>& buffer)
             auto& damped = tailDampingState[static_cast<size_t> (line)];
             damped += tailDamping * (matrix[line] - damped);
             tailBuffer.setSample (line, tailWriteIndex,
-                std::tanh (excitation[line] * 0.40f + damped * tailFeedback));
+                tailSaturation[line].process (excitation[line] * 0.40f + damped * tailFeedback));
         }
         const auto lateGain = 0.16f + decayAmount * 0.05f;
         const auto lateLeft = (delayed[0] + delayed[2] - delayed[1] * 0.35f) * lateGain;

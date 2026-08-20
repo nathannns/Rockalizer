@@ -153,7 +153,18 @@ bool modulationIsPhaseSafe (double sampleRate, int blockSize, int flangerMode)
     juce::AudioBuffer<float> buffer (2, blockSize);
     int64_t offset = 0;
     double leftEnergy = 0.0, rightEnergy = 0.0, monoEnergy = 0.0, inputEnergy = 0.0;
-    for (int block = 0; block < 180; ++block)
+    // Chorus mode's antiphase stereo decorrelation is authentic to the real
+    // SDD-320 (see ChorusModule::process), which genuinely does put more
+    // energy on one channel than the other for multi-second stretches at its
+    // ~0.2-0.5Hz LFO rate -- that's the real unit's "3D" character, not a
+    // defect, and only converges to a balanced average once measured over a
+    // window comparable to the LFO period. A fixed block *count* would make
+    // that window scale with blockSize instead, so it's driven by real time:
+    // one second of warm-up, twelve seconds of measurement, regardless of
+    // how the audio happens to be chunked.
+    const auto warmupBlocks = static_cast<int> (1.0 * sampleRate / blockSize);
+    const auto totalBlocks = static_cast<int> (12.0 * sampleRate / blockSize) + 1;
+    for (int block = 0; block < totalBlocks; ++block)
     {
         fillTestSignal (buffer, sampleRate, offset);
         offset += blockSize;
@@ -162,7 +173,7 @@ bool modulationIsPhaseSafe (double sampleRate, int blockSize, int flangerMode)
         chorus.setParameters (flangerMode == 0 ? 0.32f : 1.2f, 70.0f, 90.0f,
                               8000.0f, 45.0f, true, flangerMode);
         chorus.process (buffer);
-        if (block < 8) continue;
+        if (block < warmupBlocks) continue;
         for (int sample = 0; sample < blockSize; ++sample)
         {
             const auto left = buffer.getSample (0, sample);

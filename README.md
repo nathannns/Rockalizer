@@ -525,3 +525,61 @@ panel by explicitly using floating-point bounds, and cleans nearby conversions.
   Drip now also excites the dispersive spring network.
 - Re-centres `STUDIO | CASSETTE` and `201 | 9100 | TAPE` using balanced visual
   whitespace on both sides of every separator.
+
+## v0.66.0 shared-module cleanup, real bypass, antialiasing, and a Tape fizz fix
+
+- **True global bypass.** The dry buffer used for the Global On crossfade was
+  captured *after* the noise gate ran, so disengaging bypass crossfaded back
+  to a signal the gate had already shaped rather than the untouched input.
+  Now captured immediately after input sanitization, before the gate.
+- **Noise gate deduplicated.** The ~80-line inline three-band hysteresis gate
+  in `processBlock` is replaced by `NoiseGateModule` (ported from Threadline,
+  identical math), removing a maintained-twice duplicate between the two
+  plugins.
+- **Doubler wired up.** `DoublerModule` and its `doubler`/`doublerOn`
+  parameters existed but were never instantiated in the signal chain or
+  exposed in the UI — a whole advertised effect was silently dead. Runs
+  first in the chain, ahead of Tape (widens the raw input into a detuned
+  stereo pair before Tape's saturation/hysteresis and everything after it
+  colors that already-doubled signal, rather than doubling an already-driven
+  mono source), with a footer knob + bypass button placed between Hi Cut and
+  Tremolo for layout reasons — that placement is independent of where it
+  actually runs in the signal path.
+- **Tremolo gets a Rate control.** Every other module exposed 4-6 params;
+  Tremolo's rate was hardcoded at 3.20Hz. Now a real `tremoloRate` parameter
+  (0.5-10Hz), sharing the footer slot with Amount via two narrower knobs.
+- **Tape's directional hysteresis no longer sounds fizzy.** The direction
+  signal driving the hysteresis curve's bias shift was an instantaneous,
+  per-sample hard sign flip on the driven signal's derivative — on a
+  harmonic-rich, heavily-driven signal this flips far more often than the
+  fundamental's own rate (measured ~1450 flips/sec on a 220Hz test signal
+  with a small added wiggle, versus ~440/sec expected), injecting broadband,
+  alias-prone energy that got worse exactly as Drive increased (both the
+  jump size and the wiggle rate scale with it together) — this is what read
+  as "fizzy" distortion/fuzz. Fixed by lowpassing the raw ±1 sign itself
+  (500Hz corner) rather than using it directly: a fast, low-amplitude wiggle
+  that flips back and forth faster than the filter can track just averages
+  toward zero, while a genuine sustained half-cycle of playing still settles
+  close to ±1 well within it (verified in a standalone harness: >99% of full
+  swing preserved up to ~330Hz, ~90% at 660Hz, while cutting the noisy
+  test signal's spurious direction-flip energy by roughly 40%).
+- **Chorus/Echo/Spring feedback nonlinearities antialiased.** Same aliasing
+  class Klon/TS9/Amp already oversample to avoid: Chorus's BBD input
+  saturation and Chorus-mode rounding stage, Echo's feedback-drive
+  saturation and write-side safety rail, and Spring's per-spring dispersion
+  drive and 4-line tail FDN write (feedback up to ~0.97 at long Decay) were
+  all evaluating `tanh()` directly at base rate inside feedback loops that
+  compound whatever aliasing that generates on every repeat/reflection.
+  Oversampling the whole delay/FDN lines to fix this would need their
+  buffer indexing to track an oversampled rate too, so `Antialiasing.h`
+  (ported from Threadline) uses antiderivative antialiasing (ADAA) instead
+  — the exact average slope of the nonlinearity's antiderivative between
+  consecutive samples, mathematically equivalent to bandlimiting its output
+  at zero added latency, with a direct-evaluation fallback when consecutive
+  samples are too close together for that secant to stay well-conditioned.
+- **Chorus and Spring's tail network now use 4-point Hermite interpolation**
+  instead of 2-point linear, matching Echo's own `readDelay` (whose header
+  comment already explains why: linear interpolation's slope discontinuities
+  are audible as clicks on modulated repeats) — Chorus's whole character
+  rides on a smooth ~0.2-2.3ms delay-time sweep, making it if anything more
+  exposed to this than Echo was.

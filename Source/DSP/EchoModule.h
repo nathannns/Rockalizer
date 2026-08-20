@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "Antialiasing.h"
 
 // Roland RE-201 Space Echo-inspired: 3 tape playback heads at fixed,
 // equally-spaced positions (delay ratio exactly 1:2:3 off head 1's time).
@@ -35,6 +36,13 @@ private:
     juce::SmoothedValue<float> wobbleValue;
     juce::SmoothedValue<float> driveValue;
     std::vector<float> toneState;
+    // Antialiased (ADAA, see Antialiasing.h) versions of the feedback-loop
+    // nonlinearities -- the drive saturation and the write-side safety
+    // rail -- indexed 0/1 per delay line regardless of whether that line
+    // is being driven by the main (per-channel) path or Ping-Pong's
+    // explicit line-0/line-1 addressing.
+    AdaaTanh feedbackDriveSaturation[2];
+    AdaaSmoothRail writeRail[2];
     double sampleRate = 44100.0;
     int writeIndex = 0;
     int validSamples = 0;

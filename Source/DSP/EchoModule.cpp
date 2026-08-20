@@ -22,6 +22,8 @@ void EchoModule::prepare (const juce::dsp::ProcessSpec& spec)
 void EchoModule::reset()
 {
     std::fill (toneState.begin(), toneState.end(), 0.0f);
+    for (auto& saturation : feedbackDriveSaturation) saturation.reset();
+    for (auto& rail : writeRail) rail.reset();
     writeIndex = 0;
     validSamples = 0;
     lfoPhase = 0.0f;
@@ -172,12 +174,12 @@ void EchoModule::process (juce::AudioBuffer<float>& buffer)
             if (driveAmount > 0.0001f)
             {
                 const auto gain = 1.0f + driveAmount * 4.0f;
-                toneA = std::tanh (toneA * gain) / gain;
-                toneB = std::tanh (toneB * gain) / gain;
+                toneA = feedbackDriveSaturation[0].process (toneA * gain) / gain;
+                toneB = feedbackDriveSaturation[1].process (toneB * gain) / gain;
             }
 
-            delayBuffer.setSample (0, writeIndex, smoothRail (monoIn + toneB * feedback, 1.0f, 2.0f));
-            delayBuffer.setSample (1, writeIndex, smoothRail (toneA * feedback, 1.0f, 2.0f));
+            delayBuffer.setSample (0, writeIndex, writeRail[0].process (monoIn + toneB * feedback, 1.0f, 2.0f));
+            delayBuffer.setSample (1, writeIndex, writeRail[1].process (toneA * feedback, 1.0f, 2.0f));
 
             const auto dryL = buffer.getSample (0, sample), dryR = buffer.getSample (1, sample);
             buffer.setSample (0, sample, dryL * (1.0f - mix) + smoothRail (lineAOut, 2.0f, 4.0f) * mix);
@@ -200,12 +202,12 @@ void EchoModule::process (juce::AudioBuffer<float>& buffer)
                 if (driveAmount > 0.0001f)
                 {
                     const auto gain = 1.0f + driveAmount * 4.0f;
-                    feedbackSample = std::tanh (feedbackSample * gain) / gain;
+                    feedbackSample = feedbackDriveSaturation[channel].process (feedbackSample * gain) / gain;
                 }
 
                 const auto input = buffer.getSample (channel, sample);
                 const auto writeSample = input + feedbackSample * feedback;
-                delayBuffer.setSample (channel, writeIndex, smoothRail (writeSample, 1.0f, 2.0f));
+                delayBuffer.setSample (channel, writeIndex, writeRail[channel].process (writeSample, 1.0f, 2.0f));
                 const auto safeWet = smoothRail (wet, 2.0f, 4.0f);
                 buffer.setSample (channel, sample, input * (1.0f - mix) + safeWet * mix);
             }

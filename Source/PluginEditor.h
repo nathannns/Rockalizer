@@ -60,12 +60,13 @@ private:
             g.setColour (juce::Colour (0xffb8bec3));
             g.setFont (juce::FontOptions (14.0f));
             g.drawFittedText (
-                "Tape saturation and compression, lush stereo chorus/flanger, musical echo, "
-                "Fender-style tremolo, and convolution spring reverb in one focused signal path.\n\n"
-                "SIGNAL FLOW\nNoise Gate  >  Low Cut  >  Tape  >  Tremolo  >  Chorus/Flanger  >  "
-                "Echo  >  Spring  >  Hi Cut  >  Output\n\n"
+                "Tape saturation and compression, a detuned stereo doubler, lush stereo "
+                "chorus/flanger, musical echo, Fender-style tremolo, and convolution spring "
+                "reverb in one focused signal path.\n\n"
+                "SIGNAL FLOW\nNoise Gate  >  Low Cut  >  Doubler  >  Tape  >  Tremolo  >  "
+                "Chorus/Flanger  >  Echo  >  Spring  >  Hi Cut  >  Output\n\n"
                 "Rockalizer is an independent original plugin inspired by classic studio machines, "
-                "guitar pedals, and the spacious records of the 1980s and 1990s.\n\nVersion 0.65.0",
+                "guitar pedals, and the spacious records of the 1980s and 1990s.\n\nVersion 0.66.0",
                 card.toNearestInt().reduced (42, 150).translated (0, 58),
                 juce::Justification::centred, 12, 1.0f);
         }
@@ -354,8 +355,11 @@ private:
     juce::Slider lowCutSlider;
     juce::Slider highCutSlider;
     juce::Slider tremoloSlider;
+    juce::Slider tremoloRateSlider;
     juce::TextButton tremoloBypassButton { "TREMOLO" };
     juce::Slider outputSlider;
+    juce::Slider doublerSlider;
+    juce::TextButton doublerBypassButton { "DOUBLER" };
     juce::Slider noiseCutSlider;
     juce::TextButton noiseGateBypassButton { "NOISE GATE" };
     juce::Slider chorusRateSlider;
@@ -418,8 +422,11 @@ private:
     std::unique_ptr<SliderAttachment> lowCutAttachment;
     std::unique_ptr<SliderAttachment> highCutAttachment;
     std::unique_ptr<SliderAttachment> tremoloAttachment;
+    std::unique_ptr<SliderAttachment> tremoloRateAttachment;
     std::unique_ptr<ButtonAttachment> tremoloBypassAttachment;
     std::unique_ptr<SliderAttachment> outputAttachment;
+    std::unique_ptr<SliderAttachment> doublerAttachment;
+    std::unique_ptr<ButtonAttachment> doublerBypassAttachment;
     std::unique_ptr<SliderAttachment> noiseCutAttachment;
     std::unique_ptr<ButtonAttachment> noiseGateBypassAttachment;
     std::unique_ptr<SliderAttachment> chorusRateAttachment;

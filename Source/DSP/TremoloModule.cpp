@@ -4,18 +4,25 @@ void TremoloModule::prepare (const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = spec.sampleRate;
     amount.reset (sampleRate, 0.025);
+    rate.reset (sampleRate, 0.05);
     reset();
 }
 
 void TremoloModule::reset()
 {
     amount.setCurrentAndTargetValue (0.0f);
+    rate.setCurrentAndTargetValue (3.20f);
     phase = 0.0f;
 }
 
 void TremoloModule::setAmount (float amountPercent)
 {
     amount.setTargetValue (juce::jlimit (0.0f, 1.0f, amountPercent * 0.01f));
+}
+
+void TremoloModule::setRate (float rateHz)
+{
+    rate.setTargetValue (juce::jlimit (0.5f, 10.0f, rateHz));
 }
 
 void TremoloModule::process (juce::AudioBuffer<float>& buffer)
@@ -31,9 +38,8 @@ void TremoloModule::process (juce::AudioBuffer<float>& buffer)
     {
         const auto intensity = amount.getNextValue();
         const auto depth = intensity * 0.78f;
-        // Classic amp speed. The same gain drives both channels, so this can
-        // never become autopan.
-        constexpr auto rateHz = 3.20f;
+        // The same gain drives both channels, so this can never become autopan.
+        const auto rateHz = rate.getNextValue();
         const auto x = std::sin (phase); // -1 (toward cutoff) .. +1 (away from cutoff)
 
         // Asymmetric halves: toward cutoff (x<0) is shaped with an exponent

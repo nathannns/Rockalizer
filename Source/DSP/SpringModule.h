@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include <BinaryData.h>
+#include "Antialiasing.h"
 
 class SpringModule : private juce::AsyncUpdater
 {
@@ -35,6 +36,13 @@ private:
     float tailModPhase = 0.0f;
     double sampleRate = 44100.0;
     std::vector<float> inputEnvelope, dripEnvelope, dispersionDampingState, tailDampingState;
+    // Antialiased (ADAA, see Antialiasing.h) versions of the two feedback-
+    // loop nonlinearities: each spring's dispersion-line drive (always
+    // active, every sample, per spring) and the 4-line tail FDN's write,
+    // whose tailFeedback runs up to ~0.97 at long Decay -- a substantial,
+    // always-circulating loop.
+    AdaaTanh dispersionSaturation[3];
+    AdaaTanh tailSaturation[4];
     // Real spring dispersion is a pure-phase (allpass) phenomenon -- higher
     // frequencies genuinely travel faster through the coiled wire, with no
     // magnitude change (Valimaki/Parker/Abel, "Parametric Spring

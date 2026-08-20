@@ -27,6 +27,13 @@ private:
     // saturation curve can tell whether the field is currently rising or
     // falling -- the actual defining signature of magnetic hysteresis.
     std::vector<float> previousDrivenState;
+    // Lowpassed version of the raw rising/falling sign above (see
+    // processCore's directionSmooth comment) -- a real tape's hysteresis
+    // loop doesn't flip its direction state on every sample-to-sample
+    // wiggle, so smoothing the instantaneous +-1 sign rather than using it
+    // directly avoids injecting broadband, alias-prone "fizz" on harmonic-
+    // rich, heavily-driven signal.
+    std::vector<float> directionSmoothState;
     double sampleRate = 44100.0;
     int writeIndex = 0, tapeType = studio, oversamplingChoice = 0;
     int validSamples = 0;
