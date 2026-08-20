@@ -428,6 +428,19 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     optionsGroup.addAndMakeVisible (tapeOversamplingLabel);
     tapeOversamplingAttachment = std::make_unique<ComboBoxAttachment> (
         processor.parameters, "tapeOversampling", tapeOversamplingBox);
+
+    tremoloVoiceBox.addItemList ({ "BIAS", "HARMONIC" }, 1);
+    tremoloVoiceBox.setColour (juce::ComboBox::backgroundColourId, background);
+    tremoloVoiceBox.setColour (juce::ComboBox::textColourId, primaryText);
+    tremoloVoiceBox.setColour (juce::ComboBox::outlineColourId, panelBorder);
+    tremoloVoiceBox.setTooltip ("Bias: tweed-era gain tremolo. Harmonic: blackface-style band tremolo");
+    optionsGroup.addAndMakeVisible (tremoloVoiceBox);
+    tremoloVoiceLabel.setText ("TREMOLO VOICE", juce::dontSendNotification);
+    tremoloVoiceLabel.setColour (juce::Label::textColourId, secondaryText);
+    tremoloVoiceLabel.setFont (juce::FontOptions (11.5f, juce::Font::bold));
+    optionsGroup.addAndMakeVisible (tremoloVoiceLabel);
+    tremoloVoiceAttachment = std::make_unique<ComboBoxAttachment> (
+        processor.parameters, "tremoloVoice", tremoloVoiceBox);
     tapeOnButton.setClickingTogglesState (true);
     tapeOnButton.setColour (juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
     tapeOnButton.setColour (juce::TextButton::buttonOnColourId, juce::Colours::transparentBlack);
@@ -892,7 +905,7 @@ void RockalizerAudioProcessorEditor::resized()
                                    juce::roundToInt (18 * scaleY));
     place (outputSlider, 1060, 574);
     optionsGroup.setBounds (juce::roundToInt (898 * scaleX), juce::roundToInt (82 * scaleY),
-                            juce::roundToInt (282 * scaleX), juce::roundToInt (132 * scaleY));
+                            juce::roundToInt (282 * scaleX), juce::roundToInt (168 * scaleY));
     input1Button.setBounds (juce::roundToInt (12 * scaleX), juce::roundToInt (30 * scaleY),
                             juce::roundToInt (72 * scaleX), juce::roundToInt (32 * scaleY));
     input2Button.setBounds (juce::roundToInt (88 * scaleX), juce::roundToInt (30 * scaleY),
@@ -907,6 +920,14 @@ void RockalizerAudioProcessorEditor::resized()
                                    juce::roundToInt (72 * scaleY),
                                    juce::roundToInt (106 * scaleX),
                                    juce::roundToInt (32 * scaleY));
+    tremoloVoiceLabel.setBounds (juce::roundToInt (14 * scaleX),
+                                 juce::roundToInt (116 * scaleY),
+                                 juce::roundToInt (142 * scaleX),
+                                 juce::roundToInt (28 * scaleY));
+    tremoloVoiceBox.setBounds (juce::roundToInt (164 * scaleX),
+                               juce::roundToInt (114 * scaleY),
+                               juce::roundToInt (106 * scaleX),
+                               juce::roundToInt (32 * scaleY));
     advancedButton.setBounds (juce::roundToInt (892 * scaleX), juce::roundToInt (18 * scaleY),
                               juce::roundToInt (92 * scaleX), juce::roundToInt (56 * scaleY));
     optionsMenuButton.setBounds (juce::roundToInt (1004 * scaleX), juce::roundToInt (18 * scaleY),

@@ -14,6 +14,20 @@ public:
     {
         return wetMix.isSmoothing() || wetMix.getCurrentValue() > 0.00001f;
     }
+    // Host-side latency (in samples) introduced by the oversampler, so the
+    // processor can report it via getLatencySamples() and the host can PDC-
+    // align the wet path against the dry/wet-mix path. Oversampling is the
+    // only latency-bearing stage in this module (the delay line itself is
+    // read/write-aligned, not delayed), so this is zero when oversampling
+    // is off.
+    int getLatencySamples() const noexcept
+    {
+        if (oversamplingChoice == 1 && oversampling2x != nullptr)
+            return juce::roundToInt (oversampling2x->getLatencyInSamples());
+        if (oversamplingChoice == 2 && oversampling4x != nullptr)
+            return juce::roundToInt (oversampling4x->getLatencyInSamples());
+        return 0;
+    }
 
 private:
     void processCore (juce::AudioBuffer<float>& buffer, double processingRate);

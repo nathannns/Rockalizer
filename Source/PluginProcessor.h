@@ -80,6 +80,7 @@ private:
     double cachedTempoBpm = -1.0;
     int cachedEchoDivision = -1;
     float cachedSyncedEchoMs = 375.0f;
+    int lastReportedLatency = -1;
     int presetTransitionState = 0; // 0 idle, 1 fade out, 2 fade in
     std::atomic<bool> effectStateResetRequested { false };
     double currentSampleRate = 44100.0;

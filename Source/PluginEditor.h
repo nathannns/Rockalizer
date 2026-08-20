@@ -409,6 +409,8 @@ private:
     AdvancedTextButton advancedButton;
     juce::ComboBox inputLevelBox;
     juce::Label tapeOversamplingLabel;
+    juce::Label tremoloVoiceLabel;
+    juce::ComboBox tremoloVoiceBox;
     bool optionsVisible = false;
     bool advancedMode = false;
     bool lastEchoSyncState = false;
@@ -449,6 +451,7 @@ private:
     std::unique_ptr<ButtonAttachment> input1Attachment;
     std::unique_ptr<ButtonAttachment> input2Attachment;
     std::unique_ptr<ComboBoxAttachment> inputLevelAttachment;
+    std::unique_ptr<ComboBoxAttachment> tremoloVoiceAttachment;
 
     void refreshPresetList();
 

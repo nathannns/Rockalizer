@@ -3,6 +3,14 @@
 #include <JuceHeader.h>
 #include "Antialiasing.h"
 
+// Roland Dimension D/SDD-320 (Boss CE-1-adjacent BBD ensemble) inspired
+// chorus with a one-button Flanger blend.
+//
+// Section-name mapping: this is Rockalizer's "chorus" pedal, the SAME
+// effect as Threadline's "Ensemble" pedal (Threadline's
+// DimensionChorusModule.h) -- that class is this one, renamed (to avoid
+// colliding with Threadline's unrelated "July" ChorusModule) and ported
+// byte-for-byte.
 class ChorusModule
 {
 public:

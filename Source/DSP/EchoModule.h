@@ -9,6 +9,15 @@
 // Cluster/Wash) — see getPattern() in the .cpp for how each maps to a real
 // head combination underneath. Ping-Pong is a new, explicitly modern bonus
 // mode, not an RE-201 characteristic (the real unit is mono).
+//
+// Section-name mapping: this is Rockalizer's "delay" pedal, the SAME effect
+// as Threadline's "Satellite - 201" pedal (Threadline's SpaceEchoModule.h).
+// Threadline's SpaceEchoModule is the UPGRADED version of this: it swaps
+// this single-"Tone" filter + plain tanh drive for a passive Bass/Treble
+// shelving pair + a Jiles-Atherton hysteresis drive. Keeping the class/file
+// named EchoModule here (rather than SpaceEchoModule) is a deliberate
+// mirror of the original cross-repo split -- see Threadline's SpaceEchoModule
+// header for the correspondence.
 class EchoModule
 {
 public:

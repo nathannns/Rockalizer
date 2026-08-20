@@ -441,6 +441,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::cr
         juce::AudioParameterFloatAttributes().withLabel ("Hz")));
     layout.add (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { "tremoloOn", 1 }, "Tremolo On", false));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { "tremoloVoice", 1 }, "Tremolo Voice",
+        juce::StringArray { "Bias", "Harmonic" }, 0));
 
     layout.add (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { "chorusOn", 1 }, "Chorus On", true));
@@ -566,6 +569,21 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     tapeModule.reset();
     springModule.reset();
     tremoloModule.reset();
+
+    // Seed the Tape module's oversampling mode up front and publish its
+    // latency to the host. prepare() leaves oversamplingChoice at its Off
+    // default, so without this the host would see 0 latency for the first
+    // block even though the default is 2x oversampling. setParameters() is
+    // a no-op sound-wise here (processBlock() re-drives the same values
+    // every block while Tape is active); it only needs to run to set the
+    // oversampling choice so the corresponding latency is correct.
+    tapeModule.setParameters (readParameter ("tapeDrive"), readParameter ("tapeComp"),
+                              readParameter ("tapeTone"), readParameter ("tapeAge"),
+                              readParameter ("tapeMix"), false,
+                              static_cast<int> (readParameter ("tapeType")),
+                              static_cast<int> (readParameter ("tapeOversampling")));
+    lastReportedLatency = tapeModule.getLatencySamples();
+    setLatencySamples (lastReportedLatency);
 }
 
 void RockalizerAudioProcessor::releaseResources()
@@ -792,10 +810,23 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
 
+    // Re-publish Tape's oversampling latency whenever it actually changes
+    // (oversampling-mode switch, or Tape turning on/off). Only the Tape
+    // module oversamples -- every other stage is read/write-aligned -- so
+    // this is the plugin's entire host-reported latency.
+    const auto tapeLatency = tapeModule.getLatencySamples();
+    if (tapeLatency != lastReportedLatency)
+    {
+        setLatencySamples (tapeLatency);
+        lastReportedLatency = tapeLatency;
+    }
+
     const auto tremoloActive = readParameter ("tremoloOn") > 0.5f
                             && readParameter ("tremolo") > 0.001f;
     if (tremoloActive)
     {
+        tremoloModule.setVoice (static_cast<TremoloModule::Voice> (
+            juce::jlimit (0, 1, static_cast<int> (readParameter ("tremoloVoice")))));
         tremoloModule.setAmount (readParameter ("tremolo"));
         tremoloModule.setRate (readParameter ("tremoloRate"));
         tremoloModule.process (buffer);
@@ -803,6 +834,8 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     }
     else if (tremoloWasActive)
     {
+        tremoloModule.setVoice (static_cast<TremoloModule::Voice> (
+            juce::jlimit (0, 1, static_cast<int> (readParameter ("tremoloVoice")))));
         tremoloModule.setAmount (0.0f);
         tremoloModule.setRate (readParameter ("tremoloRate"));
         tremoloModule.process (buffer);

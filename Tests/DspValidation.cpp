@@ -76,6 +76,45 @@ bool runConfiguration (double sampleRate, int blockSize, int channels)
     return isFiniteAndBounded (buffer);
 }
 
+bool tremoloHarmonicVoiceIsStable (double sampleRate, int blockSize, int channels)
+{
+    const juce::dsp::ProcessSpec spec { sampleRate, static_cast<juce::uint32> (blockSize),
+                                       static_cast<juce::uint32> (channels) };
+    TremoloModule tremolo;
+    tremolo.prepare (spec);
+    tremolo.setVoice (TremoloModule::Voice::harmonic);
+    juce::AudioBuffer<float> buffer (channels, blockSize);
+    int64_t offset = 0;
+    bool producedStereoSpread = false;
+
+    for (int block = 0; block < 240; ++block)
+    {
+        fillTestSignal (buffer, sampleRate, offset); offset += blockSize;
+        // Sweep depth and rate so the raised-cosine AM + Linkwitz-Riley
+        // crossover run across their full ranges; the crossover is a
+        // bounded linear filter and the gains stay in [1-depth, 1+depth],
+        // so this is a NaN/Inf/blow-up check, not a tuning assertion.
+        tremolo.setAmount (static_cast<float> (10 + (block * 37) % 90));
+        tremolo.setRate (0.5f + 0.05f * static_cast<float> (block % 128));
+        tremolo.process (buffer);
+        if (! isFiniteAndBounded (buffer)) return false;
+
+        // The harmonic voice swaps the low/high gain assignment between the
+        // two channels (see TremoloModule.h), so a mono test signal must NOT
+        // come out identical left and right at any non-zero depth -- that
+        // difference is exactly what makes it stereo rather than dual-mono.
+        if (channels == 2 && ! producedStereoSpread)
+            for (int sample = 0; sample < blockSize; ++sample)
+                if (std::abs (buffer.getSample (0, sample) - buffer.getSample (1, sample)) > 0.0001f)
+                {
+                    producedStereoSpread = true;
+                    break;
+                }
+    }
+
+    return channels == 1 || producedStereoSpread;
+}
+
 bool springRemainsStable (double sampleRate, int blockSize, int channels)
 {
     const juce::dsp::ProcessSpec spec { sampleRate, static_cast<juce::uint32> (blockSize),
@@ -222,6 +261,12 @@ int main()
                 if (! springRemainsStable (sampleRate, blockSize, channels))
                 {
                     std::cerr << "FAILED Spring: " << sampleRate << " Hz, " << blockSize
+                              << " samples, " << channels << " channels\n";
+                    return 1;
+                }
+                if (! tremoloHarmonicVoiceIsStable (sampleRate, blockSize, channels))
+                {
+                    std::cerr << "FAILED Tremolo harmonic voice: " << sampleRate << " Hz, " << blockSize
                               << " samples, " << channels << " channels\n";
                     return 1;
                 }
