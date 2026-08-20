@@ -339,6 +339,7 @@ private:
     void timerCallback() override;
     void updateAdvancedVisibility();
     void showPresetMenu();
+    void mouseDown (const juce::MouseEvent&) override;
 
     RockalizerAudioProcessor& processor;
     PluginLookAndFeel pluginLookAndFeel;

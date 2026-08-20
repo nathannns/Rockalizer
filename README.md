@@ -11,27 +11,23 @@ It builds:
 ## Next work / known issues
 
 Rockalizer-relevant subset of the backlog (full list is in Threadline's
-`README.md` under "Issues / next work"; numbers match that list).
+`README.md` under "Issues / next work"; numbers match that list — completed
+items are removed, not renumbered). Echo UI tidy-up, UI consistency, and
+the Options-button click-outside-to-close (former #8, #10, #13) shipped
+2026-08-20.
 
-2. `[T+R]` **Tape fidelity** — make Tape faithful to the real machines
-   (Studer A800 + Tascam 244 docs are in hand). Real NAB/CCIR EQ curves,
-   head bump, bias, and ground "Studio"/"Cassette" in the two machines.
-3. `[T+R]` **Threadline quieter than Rockalizer** — same effects at the same
-   settings, Threadline outputs less. Suspect the global output calibration
-   (Rockalizer has +1.8 dB `outputCalibrationDb`).
-8. `[R]` **Echo UI tidy-up** — align the ECHO wordmark with the other
-   pedals; move Drive right; move the echo-type selector left with Sync
-   below it.
-9. `[R]` **Single spike after running a while** — one brief spike then gone;
-   find and fix the cause.
-10. `[R]` **UI consistency** — make layout/size/design/spacing cohesive
-    across panels and pedals.
-11. `[T+R]` **Effects upgrade sweep** — review each effect for worthwhile
-    upgrades.
-12. `[R]` **Doubler** — doesn't audibly double the playing; rework the
-    detune/widening.
-13. `[T+R]` **Options button** — clicking elsewhere should close the options
-    bar (currently needs the button pressed again).
+- `#2` `[T+R]` **Tape fidelity** — make Tape faithful to the real machines
+  (Studer A800 + Tascam 244 docs are in hand). Real NAB/CCIR EQ curves,
+  head bump, bias, and ground "Studio"/"Cassette" in the two machines.
+- `#3` `[T+R]` **Threadline quieter than Rockalizer** — same effects at the
+  same settings, Threadline outputs less. Suspect the global output
+  calibration (Rockalizer has +1.8 dB `outputCalibrationDb`).
+- `#9` `[R]` **Single spike after running a while** — one brief spike then
+  gone; find and fix the cause.
+- `#11` `[T+R]` **Effects upgrade sweep** — review each effect for
+  worthwhile upgrades.
+- `#12` `[R]` **Doubler** — doesn't audibly double the playing; rework the
+  detune/widening.
 
 Checkpoint v0.2 adds working Input, Low Cut, Hi Cut and Output processing.
 Checkpoint v0.3 adds the first working Chorus module with Rate, Depth, Width,

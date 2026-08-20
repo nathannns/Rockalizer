@@ -97,6 +97,7 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
         optionsMenuButton.toFront (false);
     };
     addAndMakeVisible (optionsMenuButton);
+    addMouseListener (this, true);
 
     for (auto* button : { &input1Button, &input2Button })
     {
@@ -582,6 +583,25 @@ void RockalizerAudioProcessorEditor::refreshPresetList()
                              juce::dontSendNotification);
 }
 
+void RockalizerAudioProcessorEditor::mouseDown (const juce::MouseEvent& e)
+{
+    if (! optionsVisible)
+        return;
+
+    // Click-outside-to-close: registered with addMouseListener(this, true) so
+    // every child's mouseDown is also delivered here. Ignore clicks that
+    // originate on the panel itself or its own gear toggle (which already
+    // handles its own open/close).
+    auto* originator = e.eventComponent;
+    if (originator == &optionsGroup || optionsGroup.isParentOf (originator))
+        return;
+    if (originator == &optionsMenuButton)
+        return;
+
+    optionsVisible = false;
+    optionsGroup.setVisible (false);
+}
+
 void RockalizerAudioProcessorEditor::timerCallback()
 {
     const auto input = processor.inputPeakDb.load (std::memory_order_relaxed);
@@ -760,11 +780,12 @@ void RockalizerAudioProcessorEditor::paint (juce::Graphics& g)
     const juce::Image* pedalImages[] {
         &tapePedalImage, &chorusPedalImage, &echoPedalImage, &springPedalImage
     };
+    // Same crop for all four -- the source PNGs share one 1024x1536 template
+    // and framing, so there's no reason for any one pedal to be cropped
+    // tighter than the others.
+    const juce::Rectangle<float> pedalSourceArea { 58.0f, 0.0f, 908.0f, 1536.0f };
     const juce::Rectangle<float> pedalSourceAreas[] {
-        { 58.0f, 0.0f, 908.0f, 1536.0f },
-        { 58.0f, 0.0f, 908.0f, 1536.0f },
-        { 74.0f, 0.0f, 876.0f, 1536.0f },
-        { 58.0f, 0.0f, 908.0f, 1536.0f }
+        pedalSourceArea, pedalSourceArea, pedalSourceArea, pedalSourceArea
     };
     const auto globalEnabled = processor.parameters.getRawParameterValue ("globalOn")->load() > 0.5f;
     const bool moduleEnabled[] {
@@ -1006,11 +1027,14 @@ void RockalizerAudioProcessorEditor::resized()
     };
     // Three knob rows now that Bass + Treble replace the single Tone knob
     // (see EchoModule's Bass/Treble shelves). Row pitch is tightened from
-    // 125px to 98px so the extra row fits the fixed card height while the
-    // Pattern/Sync/On controls stay on the pedal's lower face.
-    echoPatternBox.setBounds (juce::roundToInt ((echoCardX + 34) * scaleX), juce::roundToInt (442 * scaleY),
+    // 125px to 98px so the extra row fits the fixed card height. Pattern
+    // and Sync are stacked in the third row's left column (Sync below
+    // Pattern) instead of a separate fourth row, so Drive can take the
+    // row's right column and the title wordmark lines back up with the
+    // other pedals' shared y=438.
+    echoPatternBox.setBounds (juce::roundToInt ((echoCardX + 24) * scaleX), juce::roundToInt (342 * scaleY),
                               juce::roundToInt (108 * scaleX), juce::roundToInt (32 * scaleY));
-    echoSyncButton.setBounds (juce::roundToInt ((echoCardX + 144) * scaleX), juce::roundToInt (442 * scaleY),
+    echoSyncButton.setBounds (juce::roundToInt ((echoCardX + 24) * scaleX), juce::roundToInt (382 * scaleY),
                               juce::roundToInt (112 * scaleX), juce::roundToInt (32 * scaleY));
     placeEcho (echoTimeSlider, echoTimeLabel, echoCardX + 24, 146, 68);
     placeEcho (echoRepeatsSlider, echoRepeatsLabel, echoCardX + 104, 146, 68);
@@ -1018,8 +1042,8 @@ void RockalizerAudioProcessorEditor::resized()
     placeEcho (echoBassSlider, echoBassLabel, echoCardX + 24, 244, 68);
     placeEcho (echoTrebleSlider, echoTrebleLabel, echoCardX + 104, 244, 68);
     placeEcho (echoWobbleSlider, echoWobbleLabel, echoCardX + 184, 244, 68);
-    placeEcho (echoDriveSlider, echoDriveLabel, echoCardX + 104, 342, 68);
-    echoOnButton.setBounds (juce::roundToInt ((echoCardX + 18) * scaleX), juce::roundToInt (480 * scaleY),
+    placeEcho (echoDriveSlider, echoDriveLabel, echoCardX + 184, 342, 68);
+    echoOnButton.setBounds (juce::roundToInt ((echoCardX + 18) * scaleX), juce::roundToInt (438 * scaleY),
                             juce::roundToInt (240 * scaleX), juce::roundToInt (46 * scaleY));
 
     const auto tapeCardX = 28;
