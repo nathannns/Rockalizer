@@ -398,11 +398,13 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     configureKnob (tapeToneSlider, tapeToneLabel, "TONE", " %");
     configureKnob (tapeAgeSlider, tapeAgeLabel, "AGE", " %");
     configureKnob (tapeMixSlider, tapeMixLabel, "MIX", " %");
+    configureKnob (tapeVolumeSlider, tapeVolumeLabel, "VOLUME", " %");
     tapeDriveAttachment = std::make_unique<SliderAttachment> (processor.parameters, "tapeDrive", tapeDriveSlider);
     tapeCompAttachment = std::make_unique<SliderAttachment> (processor.parameters, "tapeComp", tapeCompSlider);
     tapeToneAttachment = std::make_unique<SliderAttachment> (processor.parameters, "tapeTone", tapeToneSlider);
     tapeAgeAttachment = std::make_unique<SliderAttachment> (processor.parameters, "tapeAge", tapeAgeSlider);
     tapeMixAttachment = std::make_unique<SliderAttachment> (processor.parameters, "tapeMix", tapeMixSlider);
+    tapeVolumeAttachment = std::make_unique<SliderAttachment> (processor.parameters, "tapeVolume", tapeVolumeSlider);
     const auto selectTapeType = [this] (int type)
     {
         if (auto* parameter = processor.parameters.getParameter ("tapeType"))
@@ -1036,8 +1038,9 @@ void RockalizerAudioProcessorEditor::resized()
     placeTape (tapeDriveSlider, tapeDriveLabel, tapeCardX + 24, 150, 68);
     placeTape (tapeToneSlider, tapeToneLabel, tapeCardX + 104, 150, 68);
     placeTape (tapeMixSlider, tapeMixLabel, tapeCardX + 184, 150, 68);
-    placeTape (tapeCompSlider, tapeCompLabel, tapeCardX + 66, 275, 68);
-    placeTape (tapeAgeSlider, tapeAgeLabel, tapeCardX + 142, 275, 68);
+    placeTape (tapeCompSlider, tapeCompLabel, tapeCardX + 24, 275, 68);
+    placeTape (tapeAgeSlider, tapeAgeLabel, tapeCardX + 104, 275, 68);
+    placeTape (tapeVolumeSlider, tapeVolumeLabel, tapeCardX + 184, 275, 68);
     tapeOnButton.setBounds (juce::roundToInt ((tapeCardX + 18) * scaleX), juce::roundToInt (438 * scaleY),
                             juce::roundToInt (240 * scaleX), juce::roundToInt (46 * scaleY));
 

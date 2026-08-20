@@ -45,7 +45,7 @@ bool runConfiguration (double sampleRate, int blockSize, int channels)
     for (int block = 0; block < 240; ++block)
     {
         fillTestSignal (buffer, sampleRate, offset); offset += blockSize;
-        tape.setParameters (55.0f, 45.0f, 60.0f, 40.0f, 65.0f, true, 1, 1);
+        tape.setParameters (55.0f, 45.0f, 60.0f, 40.0f, 65.0f, 1.0f, true, 1, 1);
         tape.process (buffer);
         tremolo.setAmount (65.0f); tremolo.process (buffer);
         chorus.setParameters (0.55f, 70.0f, 90.0f, 8500.0f, 45.0f, true, block % 80 >= 40);

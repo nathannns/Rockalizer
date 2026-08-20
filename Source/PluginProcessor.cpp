@@ -529,12 +529,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::cr
         juce::StringArray { "Off", "2x", "4x" }, 1));
     for (auto item : { std::pair { "tapeDrive", "Tape Drive" }, std::pair { "tapeComp", "Tape Compression" },
                        std::pair { "tapeTone", "Tape Tone" }, std::pair { "tapeAge", "Tape Age" },
-                       std::pair { "tapeMix", "Tape Mix" } })
+                       std::pair { "tapeMix", "Tape Mix" }, std::pair { "tapeVolume", "Tape Volume" } })
     {
         auto defaultValue = 25.0f;
         if (juce::String (item.first) == "tapeTone") defaultValue = 60.0f;
         if (juce::String (item.first) == "tapeComp") defaultValue = 20.0f;
         if (juce::String (item.first) == "tapeAge") defaultValue = 0.0f;
+        if (juce::String (item.first) == "tapeVolume") defaultValue = 100.0f;
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { item.first, 1 }, item.second,
             juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, defaultValue,
             juce::AudioParameterFloatAttributes().withLabel ("%")));
@@ -604,7 +605,7 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     // oversampling choice so the corresponding latency is correct.
     tapeModule.setParameters (readParameter ("tapeDrive"), readParameter ("tapeComp"),
                               readParameter ("tapeTone"), readParameter ("tapeAge"),
-                              readParameter ("tapeMix"), false,
+                              readParameter ("tapeMix"), readParameter ("tapeVolume"), false,
                               static_cast<int> (readParameter ("tapeType")),
                               static_cast<int> (readParameter ("tapeOversampling")));
     lastReportedLatency = tapeModule.getLatencySamples();
@@ -815,7 +816,7 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         tapeModule.setParameters (readParameter ("tapeDrive"),
             readParameter ("tapeComp"), readParameter ("tapeTone"),
             readParameter ("tapeAge"), readParameter ("tapeMix"),
-            true, static_cast<int> (readParameter ("tapeType")),
+            readParameter ("tapeVolume"), true, static_cast<int> (readParameter ("tapeType")),
             static_cast<int> (readParameter ("tapeOversampling")));
         tapeModule.process (buffer);
         tapeWasActive = true;
@@ -825,7 +826,7 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         tapeModule.setParameters (readParameter ("tapeDrive"),
             readParameter ("tapeComp"), readParameter ("tapeTone"),
             readParameter ("tapeAge"), readParameter ("tapeMix"),
-            false, static_cast<int> (readParameter ("tapeType")),
+            readParameter ("tapeVolume"), false, static_cast<int> (readParameter ("tapeType")),
             static_cast<int> (readParameter ("tapeOversampling")));
         tapeModule.process (buffer);
         if (! tapeModule.isWetTransitionActive())

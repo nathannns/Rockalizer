@@ -383,8 +383,8 @@ private:
     juce::ComboBox echoPatternBox;
     ModuleTitleButton echoOnButton { "ECHO" };
     LedToggleButton echoSyncButton { "SYNC" };
-    juce::Slider tapeDriveSlider, tapeCompSlider, tapeToneSlider, tapeAgeSlider, tapeMixSlider;
-    juce::Label tapeDriveLabel, tapeCompLabel, tapeToneLabel, tapeAgeLabel, tapeMixLabel;
+    juce::Slider tapeDriveSlider, tapeCompSlider, tapeToneSlider, tapeAgeSlider, tapeMixSlider, tapeVolumeSlider;
+    juce::Label tapeDriveLabel, tapeCompLabel, tapeToneLabel, tapeAgeLabel, tapeMixLabel, tapeVolumeLabel;
     LedToggleButton tapeStudioButton { "STUDIO" }, tapeCassetteButton { "CASSETTE" };
     juce::ComboBox tapeOversamplingBox;
     ModuleTitleButton tapeOnButton { "TAPE" };
@@ -442,7 +442,7 @@ private:
     std::unique_ptr<ComboBoxAttachment> echoPatternAttachment;
     std::unique_ptr<ButtonAttachment> echoOnAttachment, echoSyncAttachment;
     std::unique_ptr<SliderAttachment> tapeDriveAttachment, tapeCompAttachment, tapeToneAttachment;
-    std::unique_ptr<SliderAttachment> tapeAgeAttachment, tapeMixAttachment;
+    std::unique_ptr<SliderAttachment> tapeAgeAttachment, tapeMixAttachment, tapeVolumeAttachment;
     std::unique_ptr<ComboBoxAttachment> tapeOversamplingAttachment;
     std::unique_ptr<ButtonAttachment> tapeOnAttachment;
     std::unique_ptr<SliderAttachment> springDecayAttachment, springDwellAttachment, springToneAttachment;
