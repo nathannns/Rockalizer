@@ -330,13 +330,15 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
 
     configureKnob (echoTimeSlider, echoTimeLabel, "TIME", " ms");
     configureKnob (echoRepeatsSlider, echoRepeatsLabel, "REPEATS", " %");
-    configureKnob (echoToneSlider, echoToneLabel, "TONE", " Hz");
+    configureKnob (echoBassSlider, echoBassLabel, "BASS", " %");
+    configureKnob (echoTrebleSlider, echoTrebleLabel, "TREBLE", " %");
     configureKnob (echoWobbleSlider, echoWobbleLabel, "WOBBLE", " %");
     configureKnob (echoDriveSlider, echoDriveLabel, "DRIVE", " %");
     configureKnob (echoMixSlider, echoMixLabel, "MIX", " %");
     echoTimeAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoTime", echoTimeSlider);
     echoRepeatsAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoRepeats", echoRepeatsSlider);
-    echoToneAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoTone", echoToneSlider);
+    echoBassAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoBass", echoBassSlider);
+    echoTrebleAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoTreble", echoTrebleSlider);
     echoWobbleAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoWobble", echoWobbleSlider);
     echoDriveAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoDrive", echoDriveSlider);
     echoMixAttachment = std::make_unique<SliderAttachment> (processor.parameters, "echoMix", echoMixSlider);
@@ -517,7 +519,7 @@ void RockalizerAudioProcessorEditor::updateAdvancedVisibility()
     juce::Component* advancedComponents[] {
         &tapeCompSlider, &tapeCompLabel, &tapeAgeSlider, &tapeAgeLabel,
         &chorusWidthSlider, &chorusWidthLabel, &chorusToneSlider, &chorusToneLabel,
-        &echoToneSlider, &echoToneLabel, &echoWobbleSlider, &echoWobbleLabel,
+        &echoBassSlider, &echoBassLabel, &echoTrebleSlider, &echoTrebleLabel, &echoWobbleSlider, &echoWobbleLabel,
         &echoDriveSlider, &echoDriveLabel, &springDwellSlider, &springDwellLabel,
         &springDripSlider, &springDripLabel
     };
@@ -637,10 +639,10 @@ void RockalizerAudioProcessorEditor::timerCallback()
                                     &chorusToneLabel });
     setModuleAlpha (globalEnabled && echoEnabled, { &echoOnButton, &echoPatternBox,
                                   &echoSyncButton, &echoTimeSlider,
-                                  &echoRepeatsSlider, &echoMixSlider, &echoToneSlider,
-                                  &echoWobbleSlider, &echoDriveSlider, &echoTimeLabel,
-                                  &echoRepeatsLabel, &echoMixLabel, &echoToneLabel,
-                                  &echoWobbleLabel, &echoDriveLabel });
+                                  &echoRepeatsSlider, &echoMixSlider, &echoBassSlider,
+                                  &echoTrebleSlider, &echoWobbleSlider, &echoDriveSlider, &echoTimeLabel,
+                                  &echoRepeatsLabel, &echoMixLabel, &echoBassLabel,
+                                  &echoTrebleLabel, &echoWobbleLabel, &echoDriveLabel });
     setModuleAlpha (globalEnabled && springEnabled, { &springOnButton, &spring201Button,
                                     &spring9100Button, &springTapeMixerButton,
                                     &springDecaySlider, &springToneSlider,
@@ -1000,17 +1002,22 @@ void RockalizerAudioProcessorEditor::resized()
         slider.setBounds (juce::roundToInt (x * scaleX), juce::roundToInt ((y + 18) * scaleY),
                           juce::roundToInt (size * scaleX), juce::roundToInt (74 * scaleY));
     };
-    echoPatternBox.setBounds (juce::roundToInt ((echoCardX + 34) * scaleX), juce::roundToInt (398 * scaleY),
+    // Three knob rows now that Bass + Treble replace the single Tone knob
+    // (see EchoModule's Bass/Treble shelves). Row pitch is tightened from
+    // 125px to 98px so the extra row fits the fixed card height while the
+    // Pattern/Sync/On controls stay on the pedal's lower face.
+    echoPatternBox.setBounds (juce::roundToInt ((echoCardX + 34) * scaleX), juce::roundToInt (442 * scaleY),
                               juce::roundToInt (108 * scaleX), juce::roundToInt (32 * scaleY));
-    echoSyncButton.setBounds (juce::roundToInt ((echoCardX + 144) * scaleX), juce::roundToInt (398 * scaleY),
+    echoSyncButton.setBounds (juce::roundToInt ((echoCardX + 144) * scaleX), juce::roundToInt (442 * scaleY),
                               juce::roundToInt (112 * scaleX), juce::roundToInt (32 * scaleY));
-    placeEcho (echoTimeSlider, echoTimeLabel, echoCardX + 24, 150, 68);
-    placeEcho (echoRepeatsSlider, echoRepeatsLabel, echoCardX + 104, 150, 68);
-    placeEcho (echoMixSlider, echoMixLabel, echoCardX + 184, 150, 68);
-    placeEcho (echoToneSlider, echoToneLabel, echoCardX + 24, 275, 68);
-    placeEcho (echoWobbleSlider, echoWobbleLabel, echoCardX + 104, 275, 68);
-    placeEcho (echoDriveSlider, echoDriveLabel, echoCardX + 184, 275, 68);
-    echoOnButton.setBounds (juce::roundToInt ((echoCardX + 18) * scaleX), juce::roundToInt (438 * scaleY),
+    placeEcho (echoTimeSlider, echoTimeLabel, echoCardX + 24, 146, 68);
+    placeEcho (echoRepeatsSlider, echoRepeatsLabel, echoCardX + 104, 146, 68);
+    placeEcho (echoMixSlider, echoMixLabel, echoCardX + 184, 146, 68);
+    placeEcho (echoBassSlider, echoBassLabel, echoCardX + 24, 244, 68);
+    placeEcho (echoTrebleSlider, echoTrebleLabel, echoCardX + 104, 244, 68);
+    placeEcho (echoWobbleSlider, echoWobbleLabel, echoCardX + 184, 244, 68);
+    placeEcho (echoDriveSlider, echoDriveLabel, echoCardX + 104, 342, 68);
+    echoOnButton.setBounds (juce::roundToInt ((echoCardX + 18) * scaleX), juce::roundToInt (480 * scaleY),
                             juce::roundToInt (240 * scaleX), juce::roundToInt (46 * scaleY));
 
     const auto tapeCardX = 28;

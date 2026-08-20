@@ -70,6 +70,17 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             parameter->setValueNotifyingHost (parameter->convertTo0to1 (plainValue));
     };
 
+    // The old single "Tone" lowpass (1200-14000 Hz, default 6500) is not
+    // equivalent to the new Treble high-shelf (0-100%, 50=flat) that
+    // replaced it -- there is no exact conversion. This maps the old cutoff
+    // monotonically onto the Treble knob so presets keep their broad
+    // bright/dark character: 6500 Hz (the old neutral) lands at 50 (flat),
+    // and the dark end (1200 Hz) lands near full treble cut.
+    const auto toneToTreble = [] (float toneHz)
+    {
+        return juce::jlimit (0.0f, 100.0f, 50.0f + (toneHz - 6500.0f) * 50.0f / 6500.0f);
+    };
+
     if (presetIndex == 0) // -- INIT --
     {
         // Neutral utility preset: all creative controls are zero. Filters use
@@ -86,7 +97,8 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
         set ("tremoloRate", 3.20f);
         set ("chorusTone", 1000.0f);
         set ("chorusRate", 0.05f);
-        set ("echoTone", 1200.0f);
+        set ("echoBass", 50.0f);
+        set ("echoTreble", 50.0f);
         set ("echoTime", 40.0f);
         set ("lowCut", 20.0f);
         set ("highCut", 20000.0f);
@@ -116,7 +128,7 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             set ("tapeDrive", 22.0f); set ("chorusRate", 0.22f); set ("chorusDepth", 26.0f);
             set ("chorusWidth", 74.0f); set ("chorusMix", 10.0f);
             set ("echoPattern", 3.0f); set ("echoTime", 465.0f);
-            set ("echoRepeats", 36.0f); set ("echoTone", 4800.0f); set ("echoWobble", 38.0f);
+            set ("echoRepeats", 36.0f); set ("echoTreble", toneToTreble (4800.0f)); set ("echoWobble", 38.0f);
             set ("echoDrive", 18.0f); set ("echoMix", 24.0f); set ("springType", 0.0f);
             set ("springDecay", 50.0f); set ("springMix", 30.0f); break;
         case 4: // Vintage Spring
@@ -131,7 +143,7 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             set ("chorusRate", 0.26f); set ("chorusDepth", 64.0f); set ("chorusWidth", 92.0f);
             set ("chorusMix", 38.0f);
             set ("echoPattern", 4.0f); set ("echoTime", 560.0f); set ("echoRepeats", 36.0f);
-            set ("echoTone", 3300.0f); set ("echoMix", 20.0f); set ("highCut", 9800.0f);
+            set ("echoTreble", toneToTreble (3300.0f)); set ("echoMix", 20.0f); set ("highCut", 9800.0f);
             set ("springType", 2.0f); set ("springDecay", 52.0f); set ("springMix", 34.0f); break;
         case 6: // Vocal Ambience
             set ("tapeDrive", 11.0f); set ("tapeComp", 28.0f); set ("tapeMix", 28.0f);
@@ -155,13 +167,13 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             // the corrected RE-201 head ratios — halved so the primary slap
             // still lands at the originally-tuned 330ms.
             set ("echoPattern", 2.0f); set ("echoTime", 165.0f); set ("echoRepeats", 24.0f);
-            set ("echoTone", 5200.0f); set ("echoMix", 15.0f); set ("springType", 1.0f);
+            set ("echoTreble", toneToTreble (5200.0f)); set ("echoMix", 15.0f); set ("springType", 1.0f);
             set ("springDecay", 38.0f); set ("springMix", 26.0f); break;
         case 9: // Neon Slap
             set ("tapeDrive", 20.0f); set ("tapeMix", 40.0f);
             set ("chorusRate", 0.18f); set ("chorusDepth", 24.0f); set ("chorusWidth", 88.0f);
             set ("chorusMix", 18.0f); set ("echoPattern", 1.0f); set ("echoTime", 92.0f);
-            set ("echoRepeats", 8.0f); set ("echoTone", 7600.0f); set ("echoMix", 13.0f);
+            set ("echoRepeats", 8.0f); set ("echoTreble", toneToTreble (7600.0f)); set ("echoMix", 13.0f);
             set ("springType", 2.0f); set ("springDecay", 24.0f); set ("springMix", 15.0f); break;
         case 10: // Tape Mirage
             set ("tapeType", 1.0f); set ("tapeDrive", 46.0f); set ("tapeComp", 44.0f);
@@ -175,7 +187,7 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             set ("tapeDrive", 14.0f); set ("tapeTone", 68.0f); set ("tapeMix", 32.0f);
             set ("chorusRate", 0.12f); set ("chorusDepth", 34.0f);
             set ("chorusWidth", 92.0f); set ("chorusMix", 22.0f); set ("echoPattern", 3.0f);
-            set ("echoTime", 245.0f); set ("echoRepeats", 18.0f); set ("echoTone", 8800.0f);
+            set ("echoTime", 245.0f); set ("echoRepeats", 18.0f); set ("echoTreble", toneToTreble (8800.0f));
             set ("echoMix", 12.0f); set ("springType", 0.0f); set ("springDecay", 28.0f);
             set ("springTone", 68.0f); set ("springMix", 24.0f); break;
         case 12: // Chrome Funk
@@ -207,7 +219,7 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             set ("tapeTone", 52.0f); set ("tapeMix", 70.0f); set ("chorusFlangerMode", 3.0f);
             set ("chorusRate", 2.10f); set ("chorusDepth", 78.0f); set ("chorusWidth", 20.0f);
             set ("chorusMix", 28.0f); set ("echoPattern", 3.0f); set ("echoTime", 360.0f);
-            set ("echoRepeats", 25.0f); set ("echoTone", 4600.0f); set ("echoWobble", 20.0f);
+            set ("echoRepeats", 25.0f); set ("echoTreble", toneToTreble (4600.0f)); set ("echoWobble", 20.0f);
             set ("echoDrive", 26.0f); set ("echoMix", 18.0f); set ("springType", 0.0f);
             set ("springDecay", 34.0f); set ("springMix", 24.0f); break;
         case 16: // Broken Cassette
@@ -215,7 +227,7 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             set ("tapeTone", 34.0f); set ("tapeAge", 76.0f); set ("tapeMix", 92.0f);
             set ("chorusRate", 0.24f); set ("chorusDepth", 46.0f); set ("chorusWidth", 58.0f);
             set ("chorusMix", 18.0f); set ("echoPattern", 4.0f); set ("echoTime", 510.0f);
-            set ("echoRepeats", 28.0f); set ("echoTone", 3000.0f); set ("echoWobble", 48.0f);
+            set ("echoRepeats", 28.0f); set ("echoTreble", toneToTreble (3000.0f)); set ("echoWobble", 48.0f);
             set ("echoDrive", 38.0f); set ("echoMix", 22.0f); set ("springType", 2.0f);
             set ("springDecay", 42.0f); set ("springDwell", 36.0f); set ("springMix", 28.0f);
             set ("highCut", 8600.0f); break;
@@ -239,7 +251,7 @@ void RockalizerAudioProcessor::loadFactoryPreset (int presetIndex)
             set ("tremoloOn", 1.0f); set ("tremolo", 48.0f); set ("chorusRate", 0.16f);
             set ("chorusDepth", 46.0f); set ("chorusWidth", 84.0f); set ("chorusMix", 22.0f);
             set ("echoPattern", 4.0f); set ("echoTime", 480.0f); set ("echoRepeats", 22.0f);
-            set ("echoTone", 3900.0f); set ("echoWobble", 22.0f); set ("echoMix", 16.0f);
+            set ("echoTreble", toneToTreble (3900.0f)); set ("echoWobble", 22.0f); set ("echoMix", 16.0f);
             set ("springType", 2.0f); set ("springDecay", 48.0f); set ("springMix", 34.0f);
             set ("highCut", 11000.0f); break;
         default: break;
@@ -492,6 +504,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout RockalizerAudioProcessor::cr
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { item.first, 1 }, item.second,
             juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, juce::String (item.first) == "echoMix" ? 25.0f : 30.0f,
             juce::AudioParameterFloatAttributes().withLabel ("%")));
+    // Bass/Treble shelving pair, matching the real RE-201's tone stack --
+    // replaces the single "Tone" lowpass the Echo pedal used to have (see
+    // EchoModule's Bass/Treble shelf filters). 50 = flat/neutral.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "echoBass", 1 }, "Echo Bass",
+        juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, 50.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "echoTreble", 1 }, "Echo Treble",
+        juce::NormalisableRange<float> { 0.0f, 100.0f, 0.1f }, 50.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
+    // Deprecated in place, never wired to anything anymore -- the single
+    // "Tone" lowpass this pedal used to have, replaced by the Bass/Treble
+    // shelf pair above. Left registered (rather than removed) so no saved
+    // session/preset that already references this id breaks.
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "echoTone", 1 }, "Echo Tone",
         juce::NormalisableRange<float> { 1200.0f, 14000.0f, 1.0f, 0.35f }, 6500.0f,
         juce::AudioParameterFloatAttributes().withLabel ("Hz")));
@@ -902,9 +927,9 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     if (echoActive)
     {
         echoModule.setParameters (echoTime,
-            readParameter ("echoRepeats"), readParameter ("echoTone"),
-            readParameter ("echoWobble"), readParameter ("echoDrive"),
-            readParameter ("echoMix"), true,
+            readParameter ("echoRepeats"), readParameter ("echoBass"),
+            readParameter ("echoTreble"), readParameter ("echoWobble"),
+            readParameter ("echoDrive"), readParameter ("echoMix"), true,
             static_cast<int> (readParameter ("echoPattern")));
         echoModule.process (buffer);
         echoWasActive = true;
@@ -912,9 +937,9 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     else if (echoWasActive)
     {
         echoModule.setParameters (echoTime,
-            readParameter ("echoRepeats"), readParameter ("echoTone"),
-            readParameter ("echoWobble"), readParameter ("echoDrive"),
-            readParameter ("echoMix"), false,
+            readParameter ("echoRepeats"), readParameter ("echoBass"),
+            readParameter ("echoTreble"), readParameter ("echoWobble"),
+            readParameter ("echoDrive"), readParameter ("echoMix"), false,
             static_cast<int> (readParameter ("echoPattern")));
         echoModule.process (buffer);
         if (! echoModule.isWetTransitionActive())

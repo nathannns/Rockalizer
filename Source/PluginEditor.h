@@ -376,9 +376,9 @@ private:
     juce::Label chorusToneLabel;
     juce::Label chorusMixLabel;
     ModuleTitleButton chorusBypassButton { "CHORUS" };
-    juce::Slider echoTimeSlider, echoRepeatsSlider, echoToneSlider;
+    juce::Slider echoTimeSlider, echoRepeatsSlider, echoBassSlider, echoTrebleSlider;
     juce::Slider echoWobbleSlider, echoDriveSlider, echoMixSlider;
-    juce::Label echoTimeLabel, echoRepeatsLabel, echoToneLabel;
+    juce::Label echoTimeLabel, echoRepeatsLabel, echoBassLabel, echoTrebleLabel;
     juce::Label echoWobbleLabel, echoDriveLabel, echoMixLabel;
     juce::ComboBox echoPatternBox;
     ModuleTitleButton echoOnButton { "ECHO" };
@@ -437,7 +437,7 @@ private:
     std::unique_ptr<SliderAttachment> chorusToneAttachment;
     std::unique_ptr<SliderAttachment> chorusMixAttachment;
     std::unique_ptr<ButtonAttachment> chorusBypassAttachment;
-    std::unique_ptr<SliderAttachment> echoTimeAttachment, echoRepeatsAttachment, echoToneAttachment;
+    std::unique_ptr<SliderAttachment> echoTimeAttachment, echoRepeatsAttachment, echoBassAttachment, echoTrebleAttachment;
     std::unique_ptr<SliderAttachment> echoWobbleAttachment, echoDriveAttachment, echoMixAttachment;
     std::unique_ptr<ComboBoxAttachment> echoPatternAttachment;
     std::unique_ptr<ButtonAttachment> echoOnAttachment, echoSyncAttachment;
