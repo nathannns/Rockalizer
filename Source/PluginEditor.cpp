@@ -146,6 +146,7 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
     presetBox.setColour (juce::ComboBox::backgroundColourId, panel);
     presetBox.setColour (juce::ComboBox::textColourId, primaryText);
     presetBox.setColour (juce::ComboBox::outlineColourId, panelBorder);
+    presetBox.setLookAndFeel (&presetBoxLookAndFeel);
     addAndMakeVisible (presetBox);
 
     presetDropdownButton.setColour (juce::TextButton::buttonColourId, panel);
@@ -514,6 +515,7 @@ RockalizerAudioProcessorEditor::RockalizerAudioProcessorEditor (RockalizerAudioP
 
 RockalizerAudioProcessorEditor::~RockalizerAudioProcessorEditor()
 {
+    presetBox.setLookAndFeel (nullptr);
     setLookAndFeel (nullptr);
 }
 
@@ -964,21 +966,43 @@ void RockalizerAudioProcessorEditor::resized()
     logoButton.setBounds (juce::roundToInt (46 * scaleX), juce::roundToInt (10 * scaleY),
                           juce::roundToInt (252 * scaleX), juce::roundToInt (80 * scaleY));
     aboutPanel.setBounds (getLocalBounds());
-    presetPreviousButton.setBounds (juce::roundToInt (352 * scaleX), juce::roundToInt (28 * scaleY),
-                                    juce::roundToInt (38 * scaleX), juce::roundToInt (36 * scaleY));
-    presetBox.setBounds (juce::roundToInt (398 * scaleX), juce::roundToInt (28 * scaleY),
-                         juce::roundToInt (256 * scaleX), juce::roundToInt (36 * scaleY));
-    presetDropdownButton.setBounds (juce::roundToInt (618 * scaleX), juce::roundToInt (28 * scaleY),
-                                    juce::roundToInt (36 * scaleX), juce::roundToInt (36 * scaleY));
+    // Threadline preset-bar order and spacing, adapted to Rockalizer's
+    // existing 530 x 56 header card.
+    const auto presetBounds = [&]
+    {
+        return juce::Rectangle<int> (juce::roundToInt (342 * scaleX),
+                                     juce::roundToInt (18 * scaleY),
+                                     juce::roundToInt (530 * scaleX),
+                                     juce::roundToInt (56 * scaleY));
+    }();
+    auto presetArea = presetBounds.reduced (juce::roundToInt (10 * scaleX),
+                                             juce::roundToInt (10 * scaleY));
+    const auto takeWidth = [scaleX, &presetArea] (int referencePixels)
+    {
+        return presetArea.removeFromLeft (juce::roundToInt (referencePixels * scaleX));
+    };
+    const auto skip = [scaleX, &presetArea] (int referencePixels)
+    {
+        presetArea.removeFromLeft (juce::roundToInt (referencePixels * scaleX));
+    };
+
+    presetPreviousButton.setBounds (takeWidth (38));
+    skip (3);
+    presetNextButton.setBounds (takeWidth (38));
+    skip (6);
+    // The trailing dropdown and icon controls occupy 176 reference pixels,
+    // including their gaps; the editable name field receives the remainder.
+    presetBox.setBounds (presetArea.removeFromLeft (juce::jmax (100, presetArea.getWidth()
+                                                                    - juce::roundToInt (176 * scaleX))));
+    skip (6);
+    presetDropdownButton.setBounds (takeWidth (36));
     presetDropdownButton.toFront (false);
-    presetNextButton.setBounds (juce::roundToInt (662 * scaleX), juce::roundToInt (28 * scaleY),
-                                juce::roundToInt (38 * scaleX), juce::roundToInt (36 * scaleY));
-    presetNewButton.setBounds (juce::roundToInt (708 * scaleX), juce::roundToInt (28 * scaleY),
-                               juce::roundToInt (40 * scaleX), juce::roundToInt (36 * scaleY));
-    presetSaveButton.setBounds (juce::roundToInt (754 * scaleX), juce::roundToInt (28 * scaleY),
-                                juce::roundToInt (40 * scaleX), juce::roundToInt (36 * scaleY));
-    presetDeleteButton.setBounds (juce::roundToInt (800 * scaleX), juce::roundToInt (28 * scaleY),
-                                  juce::roundToInt (40 * scaleX), juce::roundToInt (36 * scaleY));
+    skip (6);
+    presetNewButton.setBounds (takeWidth (40));
+    skip (4);
+    presetSaveButton.setBounds (takeWidth (40));
+    skip (4);
+    presetDeleteButton.setBounds (takeWidth (40));
 
     const auto chorusCardX = 318;
     const auto placeChorus = [scaleX, scaleY] (juce::Slider& slider,

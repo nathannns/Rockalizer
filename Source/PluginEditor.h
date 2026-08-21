@@ -328,6 +328,29 @@ private:
         juce::Image knobImage;
     };
 
+    // The preset bar has its own dedicated dropdown button, so suppress the
+    // platform ComboBox arrow just as Threadline does.
+    class NoArrowComboBoxLookAndFeel final : public juce::LookAndFeel_V4
+    {
+    public:
+        void drawComboBox (juce::Graphics& g, int width, int height, bool,
+                           int, int, int, int, juce::ComboBox& box) override
+        {
+            constexpr auto cornerSize = 3.0f;
+            const juce::Rectangle<int> boxBounds (0, 0, width, height);
+            g.setColour (box.findColour (juce::ComboBox::backgroundColourId));
+            g.fillRoundedRectangle (boxBounds.toFloat(), cornerSize);
+            g.setColour (box.findColour (juce::ComboBox::outlineColourId));
+            g.drawRoundedRectangle (boxBounds.toFloat().reduced (0.5f), cornerSize, 1.0f);
+        }
+
+        void positionComboBoxText (juce::ComboBox& box, juce::Label& label) override
+        {
+            label.setBounds (1, 1, box.getWidth() - 2, box.getHeight() - 2);
+            label.setFont (getComboBoxFont (box));
+        }
+    };
+
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
     using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
@@ -343,6 +366,7 @@ private:
 
     RockalizerAudioProcessor& processor;
     PluginLookAndFeel pluginLookAndFeel;
+    NoArrowComboBoxLookAndFeel presetBoxLookAndFeel;
     juce::Image pluginBackground;
     juce::Image flangerLedImage;
     juce::Image rockalizerLogo;
