@@ -29,6 +29,13 @@ float RockalizerAudioProcessor::readParameter (const char* parameterID) const no
     return found != parameterCache.end() ? found->second->load (std::memory_order_relaxed) : 0.0f;
 }
 
+void RockalizerAudioProcessor::handleAsyncUpdate()
+{
+    const auto latency = requestedLatency.load (std::memory_order_acquire);
+    if (latency >= 0)
+        setLatencySamples (latency);
+}
+
 juce::File RockalizerAudioProcessor::getUserPresetDirectory() const
 {
     return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
@@ -575,7 +582,6 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     springModule.prepare (spec);
     tremoloModule.prepare (spec);
 
-    globalDryBuffer.setSize (getTotalNumOutputChannels(), samplesPerBlock, false, false, true);
     globalWet.reset (sampleRate, 0.02);
     globalWet.setCurrentAndTargetValue (readParameter ("globalOn") > 0.5f ? 1.0f : 0.0f);
 
@@ -608,8 +614,9 @@ void RockalizerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
                               readParameter ("tapeMix"), readParameter ("tapeVolume"), false,
                               static_cast<int> (readParameter ("tapeType")),
                               static_cast<int> (readParameter ("tapeOversampling")));
-    lastReportedLatency = tapeModule.getLatencySamples();
-    setLatencySamples (lastReportedLatency);
+    const auto initialLatency = tapeModule.getLatencySamples();
+    lastReportedLatency.store (initialLatency, std::memory_order_relaxed);
+    setLatencySamples (initialLatency);
 }
 
 void RockalizerAudioProcessor::releaseResources()
@@ -686,13 +693,7 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                 buffer.setSample (channel, sample, 0.0f);
         }
 
-    // Captured before the noise gate runs, so that disengaging Global On is a
-    // true bypass of the whole chain -- including the gate -- rather than a
-    // crossfade back to a signal the gate has already shaped.
-    jassert (buffer.getNumSamples() <= globalDryBuffer.getNumSamples());
-    const auto channels = juce::jmin (buffer.getNumChannels(), globalDryBuffer.getNumChannels());
-    for (int channel = 0; channel < channels; ++channel)
-        globalDryBuffer.copyFrom (channel, 0, buffer, channel, 0, buffer.getNumSamples());
+    const auto channels = buffer.getNumChannels();
 
     // Guitar-focused, stereo-linked downward expander (NoiseGateModule, shared
     // with Threadline). Three frequency-trimmed detector bands keep
@@ -734,8 +735,9 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             presetTransitionState = 0;
     }
 
-    // Once the global bypass fade has finished, avoid running the complete DSP
-    // chain. The sanitized dry signal is already in the host buffer.
+    // Once master power has faded out, avoid running the complete DSP chain
+    // and produce silence. Global Off is intentionally a master mute, not a
+    // dry bypass, matching Threadline's unified power control.
     if (! globalWet.isSmoothing() && globalWet.getCurrentValue() <= 0.00001f)
     {
         if (globalWasActive)
@@ -750,9 +752,8 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             echoWasActive = springWasActive = false;
         }
         globalWasActive = false;
-        outputPeakDb.store (inputPeakDb.load (std::memory_order_relaxed), std::memory_order_relaxed);
-        if (inputPeak >= 1.0f)
-            outputClip.store (true, std::memory_order_relaxed);
+        buffer.clear();
+        outputPeakDb.store (-100.0f, std::memory_order_relaxed);
         return;
     }
     globalWasActive = true;
@@ -841,10 +842,11 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // module oversamples -- every other stage is read/write-aligned -- so
     // this is the plugin's entire host-reported latency.
     const auto tapeLatency = tapeModule.getLatencySamples();
-    if (tapeLatency != lastReportedLatency)
+    if (tapeLatency != lastReportedLatency.load (std::memory_order_acquire))
     {
-        setLatencySamples (tapeLatency);
-        lastReportedLatency = tapeLatency;
+        requestedLatency.store (tapeLatency, std::memory_order_release);
+        lastReportedLatency.store (tapeLatency, std::memory_order_release);
+        triggerAsyncUpdate();
     }
 
     const auto tremoloActive = readParameter ("tremoloOn") > 0.5f
@@ -993,10 +995,8 @@ void RockalizerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
         {
             const auto wet = globalWet.getNextValue();
-            const auto dry = 1.0f - wet;
             for (int channel = 0; channel < channels; ++channel)
-                buffer.setSample (channel, sample,
-                    buffer.getSample (channel, sample) * wet + globalDryBuffer.getSample (channel, sample) * dry);
+                buffer.setSample (channel, sample, buffer.getSample (channel, sample) * wet);
         }
 
     float outputPeak = 0.0f;

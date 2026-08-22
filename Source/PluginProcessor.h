@@ -11,12 +11,13 @@
 #include <atomic>
 #include <unordered_map>
 
-class RockalizerAudioProcessor final : public juce::AudioProcessor
+class RockalizerAudioProcessor final : public juce::AudioProcessor,
+                                       private juce::AsyncUpdater
 {
 public:
     static constexpr int factoryPresetCount = 21;
     RockalizerAudioProcessor();
-    ~RockalizerAudioProcessor() override = default;
+    ~RockalizerAudioProcessor() override { cancelPendingUpdate(); }
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
@@ -57,6 +58,7 @@ public:
     int getCurrentPresetIndex() const noexcept { return currentPresetIndex; }
 
 private:
+    void handleAsyncUpdate() override;
     juce::dsp::Gain<float> inputGain;
     juce::dsp::Gain<float> outputGain;
     juce::dsp::StateVariableTPTFilter<float> lowCutFilter;
@@ -68,7 +70,6 @@ private:
     TapeModule tapeModule;
     SpringModule springModule;
     TremoloModule tremoloModule;
-    juce::AudioBuffer<float> globalDryBuffer;
     juce::SmoothedValue<float> globalWet;
     bool tapeWasActive = false;
     bool doublerWasActive = false;
@@ -80,7 +81,8 @@ private:
     double cachedTempoBpm = -1.0;
     int cachedEchoDivision = -1;
     float cachedSyncedEchoMs = 375.0f;
-    int lastReportedLatency = -1;
+    std::atomic<int> lastReportedLatency { -1 };
+    std::atomic<int> requestedLatency { -1 };
     int presetTransitionState = 0; // 0 idle, 1 fade out, 2 fade in
     std::atomic<bool> effectStateResetRequested { false };
     double currentSampleRate = 44100.0;

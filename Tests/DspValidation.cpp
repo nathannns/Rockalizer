@@ -4,7 +4,9 @@
 #include "DSP/SpringModule.h"
 #include "DSP/TapeModule.h"
 #include "DSP/TremoloModule.h"
+#include <atomic>
 #include <iostream>
+#include <thread>
 
 namespace
 {
@@ -45,7 +47,7 @@ bool runConfiguration (double sampleRate, int blockSize, int channels)
     for (int block = 0; block < 240; ++block)
     {
         fillTestSignal (buffer, sampleRate, offset); offset += blockSize;
-        tape.setParameters (55.0f, 45.0f, 60.0f, 40.0f, 65.0f, 1.0f, true, 1, 1);
+        tape.setParameters (55.0f, 45.0f, 60.0f, 40.0f, 65.0f, 100.0f, true, 1, 1);
         tape.process (buffer);
         tremolo.setAmount (65.0f); tremolo.process (buffer);
         chorus.setParameters (0.55f, 70.0f, 90.0f, 8500.0f, 45.0f, true, block % 80 >= 40);
@@ -155,6 +157,91 @@ bool springRemainsStable (double sampleRate, int blockSize, int channels)
     return isFiniteAndBounded (buffer);
 }
 
+bool springAsyncLoadBoundaryIsStable()
+{
+    constexpr double sampleRate = 48000.0;
+    constexpr int blockSize = 128;
+    constexpr int totalBlocks = 45000; // two minutes of audio, rendered faster than real time
+    SpringModule spring;
+    spring.prepare ({ sampleRate, blockSize, 2 });
+
+    std::atomic<bool> stable { true };
+    std::atomic<float> maximumStep { 0.0f };
+    std::atomic<float> maximumMagnitude { 0.0f };
+    std::atomic<int> failedBlock { -1 };
+    std::thread audioThread ([&]
+    {
+        juce::AudioBuffer<float> buffer (2, blockSize);
+        int64_t offset = 0;
+        float previous[2] {};
+        for (int block = 0; block < totalBlocks && stable.load (std::memory_order_relaxed); ++block)
+        {
+            fillTestSignal (buffer, sampleRate, offset);
+            offset += blockSize;
+            // Switch tanks every simulated half-second. That exercises the
+            // asynchronous Convolution publication boundary hundreds of
+            // times, far more aggressively than normal UI use.
+            const auto model = (block / 188) % 3;
+            spring.setParameters (78.0f, 62.0f, 58.0f, 55.0f, 72.0f, true, model);
+            spring.process (buffer);
+
+            for (int channel = 0; channel < 2; ++channel)
+                for (int sample = 0; sample < blockSize; ++sample)
+                {
+                    const auto value = buffer.getSample (channel, sample);
+                    const auto magnitude = std::abs (value);
+                    auto observedMagnitude = maximumMagnitude.load (std::memory_order_relaxed);
+                    while (magnitude > observedMagnitude
+                           && ! maximumMagnitude.compare_exchange_weak (observedMagnitude, magnitude,
+                                                                        std::memory_order_relaxed)) {}
+                    if (! std::isfinite (value) || magnitude > 8.01f)
+                    {
+                        failedBlock.store (block, std::memory_order_relaxed);
+                        stable.store (false, std::memory_order_relaxed);
+                        break;
+                    }
+                    const auto step = std::abs (value - previous[channel]);
+                    auto observed = maximumStep.load (std::memory_order_relaxed);
+                    while (step > observed
+                           && ! maximumStep.compare_exchange_weak (observed, step,
+                                                                   std::memory_order_relaxed)) {}
+                    if (block > 8 && step > 2.0f)
+                    {
+                        stable.store (false, std::memory_order_relaxed);
+                        break;
+                    }
+                    previous[channel] = value;
+                }
+
+            if ((block & 31) == 0)
+                std::this_thread::yield();
+        }
+        juce::MessageManager::callAsync ([]
+        {
+            juce::MessageManager::getInstance()->stopDispatchLoop();
+        });
+    });
+
+    // AsyncUpdater callbacks and Convolution's queued IR publication happen
+    // on the message thread. Pump it while the synthetic audio callback runs
+    // so this test covers the actual cross-thread transition.
+    juce::MessageManager::getInstance()->runDispatchLoop();
+    audioThread.join();
+
+    std::cout << "Spring async-load soak maximum sample step: "
+              << maximumStep.load (std::memory_order_relaxed)
+              << ", maximum magnitude: " << maximumMagnitude.load (std::memory_order_relaxed)
+              << ", failed block: " << failedBlock.load (std::memory_order_relaxed) << '\n';
+#if defined(ROCKALIZER_SPRING_ANALYSIS)
+    const auto stageMaxima = spring.getAnalysisStageMaxima();
+    std::cout << "Spring stage maxima (convolution/dispersion/tail/delayed/write/damped/fraction/buffer): "
+              << stageMaxima[0] << ", " << stageMaxima[1] << ", " << stageMaxima[2]
+              << ", " << stageMaxima[3] << ", " << stageMaxima[4] << ", " << stageMaxima[5]
+              << ", " << stageMaxima[6] << ", " << stageMaxima[7] << '\n';
+#endif
+    return stable.load (std::memory_order_relaxed);
+}
+
 bool echoRemainsCentred (double sampleRate, int blockSize)
 {
     const juce::dsp::ProcessSpec spec { sampleRate, static_cast<juce::uint32> (blockSize), 2 };
@@ -232,6 +319,7 @@ bool modulationIsPhaseSafe (double sampleRate, int blockSize, int flangerMode)
 
 int main()
 {
+    juce::ScopedJuceInitialiser_GUI juceInitialiser;
     const double sampleRates[] { 44100.0, 48000.0, 88200.0, 96000.0 };
     const int blockSizes[] { 32, 64, 128, 256, 512, 1024 };
     for (const auto sampleRate : sampleRates)
@@ -272,6 +360,11 @@ int main()
                 }
             }
         }
+    if (! springAsyncLoadBoundaryIsStable())
+    {
+        std::cerr << "FAILED Spring asynchronous IR-load soak\n";
+        return 1;
+    }
     std::cout << "Rockalizer DSP validation passed\n";
     return 0;
 }

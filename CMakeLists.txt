@@ -108,6 +108,7 @@ if(ROCKALIZER_BUILD_TESTS)
     )
     target_include_directories(RockalizerDSPTests PRIVATE Source Source/DSP)
     target_compile_features(RockalizerDSPTests PRIVATE cxx_std_17)
+    target_compile_definitions(RockalizerDSPTests PRIVATE ROCKALIZER_SPRING_ANALYSIS=1)
     target_link_libraries(RockalizerDSPTests PRIVATE
         RockalizerData
         juce::juce_audio_basics

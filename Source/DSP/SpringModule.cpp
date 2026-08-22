@@ -82,15 +82,15 @@ void SpringModule::setParameters (float decay, float dwell, float tone, float dr
         cachedFilterModel = currentModel;
     }
     const auto impulseChanged = requestedImpulse.exchange (impulseIndex) != impulseIndex;
-    if (impulseChanged || loadedImpulse != impulseIndex)
+    if (impulseChanged || loadedImpulse.load (std::memory_order_acquire) != impulseIndex)
         triggerAsyncUpdate();
 }
 
 void SpringModule::handleAsyncUpdate()
 {
-    const auto impulse = requestedImpulse.load();
+    const auto impulse = requestedImpulse.load (std::memory_order_acquire);
     loadImpulse (impulse);
-    if (impulse != requestedImpulse.load())
+    if (impulse != requestedImpulse.load (std::memory_order_acquire))
         triggerAsyncUpdate();
 }
 
@@ -131,7 +131,7 @@ void SpringModule::loadImpulse (int index)
             juce::dsp::Convolution::Stereo::yes, juce::dsp::Convolution::Trim::yes,
             juce::dsp::Convolution::Normalise::yes);
     }
-    loadedImpulse = index;
+    loadedImpulse.store (index, std::memory_order_release);
 }
 
 void SpringModule::process (juce::AudioBuffer<float>& buffer)
@@ -198,6 +198,9 @@ void SpringModule::process (juce::AudioBuffer<float>& buffer)
     convolution.process (wetContext);
     bodyFilter.process (wetContext);
     toneFilter.process (wetContext);
+#if defined(ROCKALIZER_SPRING_ANALYSIS)
+    captureAnalysisMaximum (0, wetBuffer, samples);
+#endif
 
     // Model-specific dispersive paths represent interacting physical springs.
     // 201 uses two darker springs, 9100 uses three balanced springs, and Tape
@@ -280,6 +283,9 @@ void SpringModule::process (juce::AudioBuffer<float>& buffer)
             wetBuffer.setSample (1, sample, wetRight + (common - side) * dispersionLevel);
         dispersionWriteIndex = (dispersionWriteIndex + 1) % dispersionSize;
     }
+#if defined(ROCKALIZER_SPRING_ANALYSIS)
+    captureAnalysisMaximum (1, wetBuffer, samples);
+#endif
 
     // The IR supplies the mechanical attack and tank identity. A four-line
     // damped feedback matrix supplies a dense, smoothly decaying late field,
@@ -312,6 +318,13 @@ void SpringModule::process (juce::AudioBuffer<float>& buffer)
                     + modulation[line] * modulationDepthSamples);
             auto readPosition = static_cast<float> (tailWriteIndex) - delaySamples;
             while (readPosition < 0.0f) readPosition += static_cast<float> (tailSize);
+            // Float rounding can turn a tiny negative position plus
+            // tailSize into exactly tailSize. The integer tap index below
+            // wraps through modulo, but without this matching upper wrap the
+            // Hermite fraction becomes 3604 instead of 0 and creates one
+            // enormous sample when the modulated read head crosses zero.
+            while (readPosition >= static_cast<float> (tailSize))
+                readPosition -= static_cast<float> (tailSize);
             const auto index1 = static_cast<int> (readPosition) % tailSize;
             const auto index0 = (index1 - 1 + tailSize) % tailSize;
             const auto index2 = (index1 + 1) % tailSize;
@@ -326,6 +339,13 @@ void SpringModule::process (juce::AudioBuffer<float>& buffer)
             const auto c2 = y0 - 2.5f * y1 + 2.0f * y2 - 0.5f * y3;
             const auto c3 = 0.5f * (y3 - y0) + 1.5f * (y1 - y2);
             delayed[line] = ((c3 * fraction + c2) * fraction + c1) * fraction + c0;
+#if defined(ROCKALIZER_SPRING_ANALYSIS)
+            analysisStageMaxima[3] = juce::jmax (analysisStageMaxima[3], std::abs (delayed[line]));
+            analysisStageMaxima[6] = juce::jmax (analysisStageMaxima[6], std::abs (fraction));
+            const auto bufferMaximum = juce::jmax (juce::jmax (std::abs (y0), std::abs (y1)),
+                                                    juce::jmax (std::abs (y2), std::abs (y3)));
+            analysisStageMaxima[7] = juce::jmax (analysisStageMaxima[7], bufferMaximum);
+#endif
         }
 
         const float matrix[4] {
@@ -343,8 +363,13 @@ void SpringModule::process (juce::AudioBuffer<float>& buffer)
         {
             auto& damped = tailDampingState[static_cast<size_t> (line)];
             damped += tailDamping * (matrix[line] - damped);
-            tailBuffer.setSample (line, tailWriteIndex,
-                tailSaturation[line].process (excitation[line] * 0.40f + damped * tailFeedback));
+            const auto tailWrite = tailSaturation[line].process (
+                excitation[line] * 0.40f + damped * tailFeedback);
+#if defined(ROCKALIZER_SPRING_ANALYSIS)
+            analysisStageMaxima[4] = juce::jmax (analysisStageMaxima[4], std::abs (tailWrite));
+            analysisStageMaxima[5] = juce::jmax (analysisStageMaxima[5], std::abs (damped));
+#endif
+            tailBuffer.setSample (line, tailWriteIndex, tailWrite);
         }
         const auto lateGain = 0.16f + decayAmount * 0.05f;
         const auto lateLeft = (delayed[0] + delayed[2] - delayed[1] * 0.35f) * lateGain;
@@ -358,6 +383,9 @@ void SpringModule::process (juce::AudioBuffer<float>& buffer)
         if (tailModPhase >= juce::MathConstants<float>::twoPi)
             tailModPhase -= juce::MathConstants<float>::twoPi;
     }
+#if defined(ROCKALIZER_SPRING_ANALYSIS)
+    captureAnalysisMaximum (2, wetBuffer, samples);
+#endif
 
     // Normalised IRs already carry ample tail energy. Avoid the previous gain
     // boost that made long decays swamp the source as Mix increased.

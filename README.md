@@ -16,20 +16,38 @@ items are removed, not renumbered). Echo UI tidy-up, UI consistency, and
 the Options-button click-outside-to-close (former #8, #10, #13) shipped
 2026-08-20.
 
-- `#2` `[T+R]` **Tape fidelity** — make Tape faithful to the real machines
-  (Studer A800 + Tascam 244 docs are in hand). Real NAB/CCIR EQ curves,
-  head bump, bias, and ground "Studio"/"Cassette" in the two machines.
-- `#3` `[T+R]` **Threadline quieter than Rockalizer** — same effects at the
-  same settings, Threadline outputs less. Suspect the global output
-  calibration (Rockalizer has +1.8 dB `outputCalibrationDb`).
-- `#9` `[R]` **Single spike after running a while** — one brief spike then
-  gone; find and fix the cause.
-- `#11` `[T+R]` **Effects upgrade sweep** — review each effect for
-  worthwhile upgrades.
-- `#12` `[R]` **Doubler** — doesn't audibly double the playing; rework the
-  detune/widening.
+No numbered Rockalizer issue remains open. Backlog #9 was reproduced and
+closed on 2026-08-23.
+
+The cross-project effect audit completed on 2026-08-21. Rockalizer's full DSP
+matrix passes across supported sample rates, block sizes, mono/stereo paths,
+modulation modes and feedback effects. It also removed a real data race between
+Spring's asynchronous IR loader and the audio thread.
+
+The later long-run soak reproduced backlog #9 after 53.8 seconds. When the
+modulated four-point Hermite tail read crossed the circular buffer's zero
+point, adding the buffer length could round a tiny negative `float` position
+to exactly `bufferSize`. The integer tap wrapped correctly, but the fractional
+position became 3604 instead of 0 and generated one multi-million-level sample.
+The read position now wraps its upper bound too. A two-minute accelerated soak
+with hundreds of asynchronous tank changes completes at 0.376 peak and 0.0187
+maximum sample step. The shared ADAA secants also use double precision and
+enforce their nonlinearities' exact mathematical ranges as additional
+long-feedback-loop protection.
+
+The follow-up connection audit also moved Tape oversampling latency
+notifications out of `processBlock()` and onto the message thread. The audio
+thread now only publishes an atomic request, avoiding a host callback during
+live processing while retaining correct PDC updates.
 
 Checkpoint v0.2 adds working Input, Low Cut, Hi Cut and Output processing.
+
+The current Tape engine adds a machine-grounded complementary record/reproduce
+EQ pair around its magnetic stage. Studio uses the Studer A800 15 ips NAB
+3180/50 us landmarks; Cassette follows the Tascam 244's separate record,
+bias-oscillator and playback architecture with a 120 us cassette turnover.
+The pair is neutral at small signal while record pre-emphasis changes how hard
+high frequencies drive magnetic saturation.
 Checkpoint v0.3 adds the first working Chorus module with Rate, Depth, Width,
 Tone, Mix and smoothly blended bypass.
 Checkpoint v0.4 adds the complete tape Echo: Straight, Bounce, Gallop, Cluster
@@ -549,10 +567,10 @@ panel by explicitly using floating-point bounds, and cleans nearby conversions.
 
 ## v0.66.0 shared-module cleanup, real bypass, antialiasing, and a Tape fizz fix
 
-- **True global bypass.** The dry buffer used for the Global On crossfade was
-  captured *after* the noise gate ran, so disengaging bypass crossfaded back
-  to a signal the gate had already shaped rather than the untouched input.
-  Now captured immediately after input sanitization, before the gate.
+- **Historical global bypass fix.** This version corrected where the dry
+  crossfade buffer was captured. A later unified-power update superseded the
+  dry-bypass behavior: Global Off now fades to silence and skips all effects,
+  matching Threadline's combined global-off/mute control.
 - **Noise gate deduplicated.** The ~80-line inline three-band hysteresis gate
   in `processBlock` is replaced by `NoiseGateModule` (ported from Threadline,
   identical math), removing a maintained-twice duplicate between the two

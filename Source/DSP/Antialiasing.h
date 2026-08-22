@@ -25,10 +25,10 @@
 // form |x| + log1p(exp(-2|x|)) - log(2) rather than naively logging cosh(x)
 // itself, which overflows cosh(x) for even moderately large |x| (double-
 // digit x is routine here under heavy Sustain/Regen self-oscillation).
-inline float logCoshStable (float x) noexcept
+inline double logCoshStable (double x) noexcept
 {
     const auto ax = std::abs (x);
-    return ax + std::log1p (std::exp (-2.0f * ax)) - 0.6931472f;
+    return ax + std::log1p (std::exp (-2.0 * ax)) - 0.6931471805599453;
 }
 
 class AdaaTanh
@@ -44,16 +44,19 @@ public:
             primed = true;
             return std::tanh (x2);
         }
-        const auto denom = x2 - x1;
-        const auto y = std::abs (denom) > 1.0e-4f
-            ? (logCoshStable (x2) - logCoshStable (x1)) / denom
-            : std::tanh (0.5f * (x1 + x2));
-        x1 = x2;
-        return y;
+        const auto current = static_cast<double> (x2);
+        const auto denom = current - x1;
+        const auto y = std::abs (denom) > 1.0e-4
+            ? (logCoshStable (current) - logCoshStable (x1)) / denom
+            : std::tanh (0.5 * (x1 + current));
+        x1 = current;
+        // The exact secant is bounded by tanh's range. Clamping only rejects
+        // numerical cancellation error; it cannot alter an exact result.
+        return static_cast<float> (std::max (-1.0, std::min (1.0, y)));
     }
 
 private:
-    float x1 = 0.0f;
+    double x1 = 0.0;
     bool primed = false;
 };
 
@@ -75,18 +78,20 @@ public:
         {
             x1 = x2;
             primed = true;
-            return evaluate (x2, knee, ceiling);
+            return static_cast<float> (evaluate (x2, knee, ceiling));
         }
-        const auto denom = x2 - x1;
-        const auto y = std::abs (denom) > 1.0e-4f
-            ? (antiderivative (x2, knee, ceiling) - antiderivative (x1, knee, ceiling)) / denom
-            : evaluate (0.5f * (x1 + x2), knee, ceiling);
-        x1 = x2;
-        return y;
+        const auto current = static_cast<double> (x2);
+        const auto denom = current - x1;
+        const auto y = std::abs (denom) > 1.0e-4
+            ? (antiderivative (current, knee, ceiling) - antiderivative (x1, knee, ceiling)) / denom
+            : evaluate (0.5 * (x1 + current), knee, ceiling);
+        x1 = current;
+        const auto bound = static_cast<double> (ceiling);
+        return static_cast<float> (std::max (-bound, std::min (bound, y)));
     }
 
 private:
-    static float evaluate (float value, float knee, float ceiling) noexcept
+    static double evaluate (double value, double knee, double ceiling) noexcept
     {
         const auto magnitude = std::abs (value);
         if (magnitude <= knee)
@@ -99,16 +104,16 @@ private:
     // the linear region, and knee^2/2 + knee*(|x|-knee) +
     // range^2*log(cosh((|x|-knee)/range)) beyond it -- the running total of
     // the linear region plus the integral of the tanh soft knee past `knee`.
-    static float antiderivative (float value, float knee, float ceiling) noexcept
+    static double antiderivative (double value, double knee, double ceiling) noexcept
     {
         const auto magnitude = std::abs (value);
         if (magnitude <= knee)
             return 0.5f * magnitude * magnitude;
         const auto range = ceiling - knee;
         const auto excess = magnitude - knee;
-        return 0.5f * knee * knee + knee * excess + range * range * logCoshStable (excess / range);
+        return 0.5 * knee * knee + knee * excess + range * range * logCoshStable (excess / range);
     }
 
-    float x1 = 0.0f;
+    double x1 = 0.0;
     bool primed = false;
 };

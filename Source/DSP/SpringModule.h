@@ -16,6 +16,9 @@ public:
     {
         return wetMix.isSmoothing() || wetMix.getCurrentValue() > 0.00001f;
     }
+#if defined(ROCKALIZER_SPRING_ANALYSIS)
+    std::array<float, 8> getAnalysisStageMaxima() const noexcept { return analysisStageMaxima; }
+#endif
 
 private:
     void handleAsyncUpdate() override;
@@ -27,8 +30,12 @@ private:
     juce::dsp::StateVariableTPTFilter<float> toneFilter, bodyFilter, dripFilter;
     juce::AudioBuffer<float> wetBuffer, dripBuffer, dispersionBuffer, tailBuffer;
     juce::SmoothedValue<float> wetMix;
+    // setParameters() runs on the audio thread while handleAsyncUpdate()
+    // publishes completion from the message thread. Both sides must be
+    // atomic: the previous plain loadedImpulse read/write was a data race
+    // during the short window in which a new spring IR finished loading.
     std::atomic<int> requestedImpulse { 0 };
-    int loadedImpulse = -1;
+    std::atomic<int> loadedImpulse { -1 };
     int maximumBlockSize = 0, channelCount = 0;
     int currentModel = 0, cachedFilterModel = -1;
     int dispersionWriteIndex = 0;
@@ -57,4 +64,13 @@ private:
     float cachedToneHz = -1.0f;
     float dripDetectorCoefficient = 0.0f;
     float envelopeAttack = 0.0f, envelopeRelease = 0.0f;
+#if defined(ROCKALIZER_SPRING_ANALYSIS)
+    std::array<float, 8> analysisStageMaxima {};
+    void captureAnalysisMaximum (int stage, const juce::AudioBuffer<float>& buffer, int samples) noexcept
+    {
+        for (int channel = 0; channel < juce::jmin (channelCount, buffer.getNumChannels()); ++channel)
+            analysisStageMaxima[(size_t) stage] = juce::jmax (
+                analysisStageMaxima[(size_t) stage], buffer.getMagnitude (channel, 0, samples));
+    }
+#endif
 };
